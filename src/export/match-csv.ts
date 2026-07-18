@@ -1,5 +1,6 @@
 import { getMatchEvents } from '../db/events'
 import { getMatch, listMatchesNewestFirst } from '../db/matches'
+import { getTeam } from '../db/teams'
 import type {
   MatchEventRecord,
   MatchRecord,
@@ -10,6 +11,8 @@ import { downloadCsv, serializeCsv, type CsvColumn, type CsvValue } from './csv'
 
 interface MatchCsvRow {
   partit_id: string
+  equip_id: string
+  equip: string
   registre_id: string
   ordre: CsvValue
   rival: string
@@ -21,15 +24,24 @@ interface MatchCsvRow {
   part: CsvValue
   possessio: CsvValue
   fase: string
+  categoria_accio: string
   accio_id: string
   accio: string
+  posicio_llancament: CsvValue
+  jugador_id: string
+  jugador_nom: string
+  jugador_cognoms: string
+  jugador_sobrenom: string
   dorsal: CsvValue
+  posicio: string
   finalitza_possessio: CsvValue
   data_registre: string
 }
 
 const columns: readonly CsvColumn<MatchCsvRow>[] = [
   { header: 'partit_id', value: (row) => row.partit_id },
+  { header: 'equip_id', value: (row) => row.equip_id },
+  { header: 'equip', value: (row) => row.equip },
   { header: 'registre_id', value: (row) => row.registre_id },
   { header: 'ordre', value: (row) => row.ordre },
   { header: 'rival', value: (row) => row.rival },
@@ -41,9 +53,16 @@ const columns: readonly CsvColumn<MatchCsvRow>[] = [
   { header: 'part', value: (row) => row.part },
   { header: 'possessio', value: (row) => row.possessio },
   { header: 'fase', value: (row) => row.fase },
+  { header: 'categoria_accio', value: (row) => row.categoria_accio },
   { header: 'accio_id', value: (row) => row.accio_id },
   { header: 'accio', value: (row) => row.accio },
+  { header: 'posicio_llancament', value: (row) => row.posicio_llancament },
+  { header: 'jugador_id', value: (row) => row.jugador_id },
+  { header: 'jugador_nom', value: (row) => row.jugador_nom },
+  { header: 'jugador_cognoms', value: (row) => row.jugador_cognoms },
+  { header: 'jugador_sobrenom', value: (row) => row.jugador_sobrenom },
   { header: 'dorsal', value: (row) => row.dorsal },
+  { header: 'posicio', value: (row) => row.posicio },
   { header: 'finalitza_possessio', value: (row) => row.finalitza_possessio },
   { header: 'data_registre', value: (row) => row.data_registre },
 ]
@@ -55,8 +74,11 @@ export async function downloadMatchCsv(matchId: string): Promise<void> {
     throw new Error('Match not found')
   }
 
-  const events = await getMatchEvents(matchId)
-  const rows = createMatchRows(match, events)
+  const [events, team] = await Promise.all([
+    getMatchEvents(matchId),
+    match.teamId ? getTeam(match.teamId) : Promise.resolve(undefined),
+  ])
+  const rows = createMatchRows(match, events, team?.name ?? '')
   downloadCsv(createMatchFilename(match), serializeCsv(rows, columns))
 }
 
@@ -64,7 +86,13 @@ export async function downloadAllMatchesCsv(): Promise<void> {
   const matches = await listMatchesNewestFirst()
   const rows = (
     await Promise.all(
-      matches.map(async (match) => createMatchRows(match, await getMatchEvents(match.id))),
+      matches.map(async (match) => {
+        const [events, team] = await Promise.all([
+          getMatchEvents(match.id),
+          match.teamId ? getTeam(match.teamId) : Promise.resolve(undefined),
+        ])
+        return createMatchRows(match, events, team?.name ?? '')
+      }),
     )
   ).flat()
 
@@ -74,16 +102,21 @@ export async function downloadAllMatchesCsv(): Promise<void> {
 function createMatchRows(
   match: MatchRecord,
   events: readonly MatchEventRecord[],
+  teamName: string,
 ): MatchCsvRow[] {
   if (events.length === 0) {
-    return [createEmptyMatchRow(match)]
+    return [createEmptyMatchRow(match, teamName)]
   }
 
-  return events.map((event) => createEventRow(match, event))
+  return events.map((event) => createEventRow(match, event, teamName))
 }
 
-function createEventRow(match: MatchRecord, event: MatchEventRecord): MatchCsvRow {
-  const common = createCommonFields(match)
+function createEventRow(
+  match: MatchRecord,
+  event: MatchEventRecord,
+  teamName: string,
+): MatchCsvRow {
+  const common = createCommonFields(match, teamName)
 
   if (event.payload.kind === 'period-change') {
     return {
@@ -94,9 +127,16 @@ function createEventRow(match: MatchRecord, event: MatchEventRecord): MatchCsvRo
       part: 2,
       possessio: '',
       fase: translatePhase(event.payload.startingPhase),
+      categoria_accio: '',
       accio_id: '',
       accio: 'Inici 2a part',
+      posicio_llancament: null,
+      jugador_id: '',
+      jugador_nom: '',
+      jugador_cognoms: '',
+      jugador_sobrenom: '',
       dorsal: '',
+      posicio: '',
       finalitza_possessio: '',
       data_registre: event.createdAt,
     }
@@ -110,34 +150,50 @@ function createEventRow(match: MatchRecord, event: MatchEventRecord): MatchCsvRo
     part: event.payload.period,
     possessio: event.payload.possession,
     fase: translatePhase(event.payload.phase),
+    categoria_accio: translateActionCategory(event.payload.actionCategory),
     accio_id: event.payload.actionId,
     accio: event.payload.actionLabel,
+    posicio_llancament: event.payload.shotPosition,
+    jugador_id: event.payload.playerId ?? '',
+    jugador_nom: protectSpreadsheetText(event.payload.playerFirstName),
+    jugador_cognoms: protectSpreadsheetText(event.payload.playerLastName),
+    jugador_sobrenom: protectSpreadsheetText(event.payload.playerNickname),
     dorsal: event.payload.playerNumber,
+    posicio: translatePlayerPosition(event.payload.playerPosition),
     finalitza_possessio: event.payload.endsPossession,
     data_registre: event.createdAt,
   }
 }
 
-function createEmptyMatchRow(match: MatchRecord): MatchCsvRow {
+function createEmptyMatchRow(match: MatchRecord, teamName: string): MatchCsvRow {
   return {
-    ...createCommonFields(match),
+    ...createCommonFields(match, teamName),
     registre_id: '',
     ordre: '',
     tipus_registre: 'partit',
     part: '',
     possessio: '',
     fase: translatePhase(match.initialPhase),
+    categoria_accio: '',
     accio_id: '',
     accio: '',
+    posicio_llancament: null,
+    jugador_id: '',
+    jugador_nom: '',
+    jugador_cognoms: '',
+    jugador_sobrenom: '',
     dorsal: '',
+    posicio: '',
     finalitza_possessio: '',
     data_registre: match.createdAt,
   }
 }
 
-function createCommonFields(match: MatchRecord): Pick<
+function createCommonFields(match: MatchRecord, teamName: string): Pick<
   MatchCsvRow,
   | 'partit_id'
+  | 'equip_id'
+  | 'equip'
   | 'rival'
   | 'data_hora'
   | 'competicio'
@@ -146,6 +202,8 @@ function createCommonFields(match: MatchRecord): Pick<
 > {
   return {
     partit_id: match.id,
+    equip_id: match.teamId ?? '',
+    equip: protectSpreadsheetText(teamName),
     rival: protectSpreadsheetText(match.opponent),
     data_hora: match.scheduledAt,
     competicio: protectSpreadsheetText(match.competition),
@@ -154,7 +212,8 @@ function createCommonFields(match: MatchRecord): Pick<
   }
 }
 
-function translatePhase(phase: Phase): string {
+function translatePhase(phase: Phase | null): string {
+  if (phase === null) return ''
   return phase === 'attack' ? 'atac' : 'defensa'
 }
 
@@ -167,6 +226,18 @@ function translateStatus(status: MatchStatus): string {
     case 'finished':
       return 'finalitzat'
   }
+}
+
+function translateActionCategory(category: 'shot' | 'non-shot' | 'special' | null): string {
+  if (category === null) return ''
+  if (category === 'shot') return 'llancament'
+  if (category === 'non-shot') return 'no_llancament'
+  return 'especial'
+}
+
+function translatePlayerPosition(position: 'court' | 'goalkeeper' | null): string {
+  if (position === null) return ''
+  return position === 'goalkeeper' ? 'porter' : 'jugador_camp'
 }
 
 function createMatchFilename(match: MatchRecord): string {

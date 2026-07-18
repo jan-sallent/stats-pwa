@@ -4,6 +4,10 @@ export type Route =
   | { screen: 'home' }
   | { screen: 'new-match' }
   | { screen: 'history' }
+  | { screen: 'teams' }
+  | { screen: 'team-editor'; teamId?: EntityId }
   | { screen: 'match'; matchId: EntityId }
+  | { screen: 'match-events'; matchId: EntityId }
+  | { screen: 'event-editor'; matchId: EntityId; eventId: EntityId }
 
 export type Navigate = (route: Route) => void

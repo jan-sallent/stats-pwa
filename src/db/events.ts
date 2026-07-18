@@ -5,10 +5,15 @@ import type {
   MatchEventRecord,
   PeriodChangeEventPayload,
 } from '../models/types'
+import { oppositePhase } from '../domain/match-state'
 import { createEntityId, db } from './database'
 
 export function getMatchEvents(matchId: EntityId): Promise<MatchEventRecord[]> {
   return db.events.where('matchId').equals(matchId).sortBy('sequence')
+}
+
+export function getMatchEvent(eventId: EntityId): Promise<MatchEventRecord | undefined> {
+  return db.events.get(eventId)
 }
 
 export async function addActionEvent(
@@ -43,6 +48,52 @@ export async function finishMatch(matchId: EntityId): Promise<void> {
   await db.matches.update(matchId, {
     status: 'finished',
     updatedAt: new Date().toISOString(),
+  })
+}
+
+export async function updateActionEvent(
+  matchId: EntityId,
+  eventId: EntityId,
+  payload: ActionEventPayload,
+): Promise<void> {
+  await db.transaction('rw', db.matches, db.events, async () => {
+    const [match, event] = await Promise.all([
+      db.matches.get(matchId),
+      db.events.get(eventId),
+    ])
+    if (!match || match.initialPhase === null) throw new Error('Match not found')
+    if (!event || event.matchId !== matchId || event.payload.kind !== 'action') {
+      throw new Error('Action event not found')
+    }
+
+    await db.events.update(eventId, { payload })
+    const events = await getMatchEvents(matchId)
+    let period: 1 | 2 = 1
+    let possession = 1
+    let phase = match.initialPhase
+
+    for (const currentEvent of events) {
+      if (currentEvent.payload.kind === 'period-change') {
+        period = 2
+        possession = 1
+        phase = currentEvent.payload.startingPhase
+        continue
+      }
+
+      const normalizedPayload: ActionEventPayload = {
+        ...currentEvent.payload,
+        period,
+        possession,
+        phase,
+      }
+      await db.events.update(currentEvent.id, { payload: normalizedPayload })
+      if (normalizedPayload.endsPossession) {
+        possession += 1
+        phase = oppositePhase(phase)
+      }
+    }
+
+    await db.matches.update(matchId, { updatedAt: new Date().toISOString() })
   })
 }
 

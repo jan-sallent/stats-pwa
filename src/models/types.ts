@@ -3,15 +3,39 @@ export type IsoDateTime = string
 export type MatchStatus = 'draft' | 'in-progress' | 'finished'
 export type Phase = 'attack' | 'defense'
 export type MatchPeriod = 1 | 2
+export type PlayerPosition = 'court' | 'goalkeeper'
+export type ActionCategory = 'shot' | 'non-shot' | 'special'
+export type ShotPosition = '6m' | '7m' | '9m'
+
+export interface TeamRecord {
+  id: EntityId
+  name: string
+  createdAt: IsoDateTime
+  updatedAt: IsoDateTime
+}
+
+export interface PlayerRecord {
+  id: EntityId
+  teamId: EntityId
+  firstName: string
+  lastName: string
+  nickname: string
+  number: number
+  position: PlayerPosition
+  createdAt: IsoDateTime
+  updatedAt: IsoDateTime
+}
 
 export interface MatchRecord {
   id: EntityId
+  teamId: EntityId | null
+  selectedPlayerIds: EntityId[]
   status: MatchStatus
   opponent: string
   scheduledAt: IsoDateTime
   competition: string
   round: string
-  initialPhase: Phase
+  initialPhase: Phase | null
   createdAt: IsoDateTime
   updatedAt: IsoDateTime
 }
@@ -23,7 +47,14 @@ export interface ActionEventPayload {
   phase: Phase
   actionId: string
   actionLabel: string
-  playerNumber: number
+  actionCategory: ActionCategory | null
+  shotPosition: ShotPosition | null
+  playerId: EntityId | null
+  playerFirstName: string
+  playerLastName: string
+  playerNickname: string
+  playerNumber: number | null
+  playerPosition: PlayerPosition | null
   endsPossession: boolean
 }
 

@@ -1,9 +1,16 @@
 import Dexie, { type EntityTable } from 'dexie'
-import type { MatchEventRecord, MatchRecord } from '../models/types'
+import type {
+  MatchEventRecord,
+  MatchRecord,
+  PlayerRecord,
+  TeamRecord,
+} from '../models/types'
 
 class HandbolDatabase extends Dexie {
   matches!: EntityTable<MatchRecord, 'id'>
   events!: EntityTable<MatchEventRecord, 'id'>
+  teams!: EntityTable<TeamRecord, 'id'>
+  players!: EntityTable<PlayerRecord, 'id'>
 
   constructor() {
     super('handbol-stats')
@@ -30,6 +37,59 @@ class HandbolDatabase extends Dexie {
             match.initialPhase ??= 'attack'
           }),
       )
+
+    this.version(3)
+      .stores({
+        matches: 'id, teamId, status, scheduledAt, updatedAt',
+        events: 'id, matchId, [matchId+sequence], createdAt',
+        teams: 'id, name, updatedAt',
+        players: 'id, teamId, &[teamId+number], position, updatedAt',
+      })
+      .upgrade(async (transaction) => {
+        await transaction
+          .table<MatchRecord>('matches')
+          .toCollection()
+          .modify((match) => {
+            match.teamId ??= null
+          })
+
+        await transaction
+          .table<MatchEventRecord>('events')
+          .toCollection()
+          .modify((event) => {
+            if (event.payload.kind !== 'action') return
+            event.payload.playerId ??= null
+            event.payload.playerFirstName ??= ''
+            event.payload.playerLastName ??= ''
+            event.payload.playerNickname ??= ''
+            event.payload.playerPosition ??= 'court'
+          })
+      })
+
+    this.version(4)
+      .stores({
+        matches: 'id, teamId, status, scheduledAt, updatedAt',
+        events: 'id, matchId, [matchId+sequence], createdAt',
+        teams: 'id, name, updatedAt',
+        players: 'id, teamId, &[teamId+number], position, updatedAt',
+      })
+      .upgrade(async (transaction) => {
+        await transaction
+          .table<MatchRecord>('matches')
+          .toCollection()
+          .modify((match) => {
+            match.selectedPlayerIds ??= []
+          })
+
+        await transaction
+          .table<MatchEventRecord>('events')
+          .toCollection()
+          .modify((event) => {
+            if (event.payload.kind !== 'action') return
+            event.payload.actionCategory ??= null
+            event.payload.shotPosition ??= null
+          })
+      })
   }
 }
 

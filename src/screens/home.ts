@@ -1,31 +1,22 @@
 import { listMatchesNewestFirst } from '../db/matches'
-import { getStoragePersistenceStatus } from '../db/storage'
+import { listTeams } from '../db/teams'
 import type { Navigate } from '../navigation'
 
 export async function createHomeScreen(navigate: Navigate): Promise<HTMLElement> {
-  const [matches, persistence] = await Promise.all([
+  const [matches, teams] = await Promise.all([
     listMatchesNewestFirst(),
-    getStoragePersistenceStatus(),
+    listTeams(),
   ])
   const resumableMatch = matches.find((match) => match.status !== 'finished')
-  const persistenceLabel =
-    persistence === 'persistent'
-      ? 'Persistent'
-      : persistence === 'best-effort'
-        ? 'Est\u00e0ndard'
-        : 'No disponible'
   const screen = document.createElement('main')
   screen.className = 'app-shell home-screen'
   screen.innerHTML = `
     <header class="app-header">
-      <p class="eyebrow">Registre local de partits</p>
-      <h1>Handbol Stats</h1>
-      <p class="lead">Aplicaci&oacute; preparada per treballar des del m&ograve;bil i exportar les dades.</p>
+      <h1>RAiP <span>(Recol&middot;lecci&oacute; d'Accions i Possessions)</span></h1>
     </header>
 
     <section class="card" aria-labelledby="start-title">
       <div>
-        <p class="status-label">Emmagatzematge local</p>
         <h2 id="start-title">Comen&ccedil;a un registre</h2>
       </div>
       <button class="button button-primary" data-action="new-match" type="button">
@@ -37,7 +28,6 @@ export async function createHomeScreen(navigate: Navigate): Promise<HTMLElement>
       resumableMatch
         ? `<section class="card" aria-labelledby="resume-title">
             <div>
-              <p class="status-label">Desat al dispositiu</p>
               <h2 id="resume-title">Continuar l'&uacute;ltim partit</h2>
             </div>
             <button class="button button-secondary" data-action="resume" type="button">
@@ -49,24 +39,27 @@ export async function createHomeScreen(navigate: Navigate): Promise<HTMLElement>
 
     <section class="card" aria-labelledby="history-title">
       <div>
-        <p class="status-label">Partits del dispositiu</p>
         <h2 id="history-title">Historial</h2>
       </div>
       <button class="button button-ghost" data-action="history" type="button">
-        Veure ${matches.length}
+        Veure
       </button>
     </section>
 
-    <section class="status-panel" aria-label="Estat de la infraestructura">
-      <div class="status-row"><span>Base de dades local</span><strong>Activa</strong></div>
-      <div class="status-row"><span>Partits locals</span><strong>${matches.length}</strong></div>
-      <div class="status-row"><span>Protecci&oacute; de dades</span><strong>${persistenceLabel}</strong></div>
+    <section class="card" aria-labelledby="teams-title">
+      <div>
+        <p class="status-label">Plantilles</p>
+        <h2 id="teams-title">Equips</h2>
+        <p>${teams.length} ${teams.length === 1 ? 'plantilla desada' : 'plantilles desades'}</p>
+      </div>
+      <button class="button button-ghost" data-action="teams" type="button">
+        Gestionar
+      </button>
     </section>
 
-    <aside class="data-warning">
-      <strong>Les dades es guarden en aquest dispositiu.</strong>
-      <p>Descarrega peri&ograve;dicament una c&ograve;pia des de l'Historial. Esborrar les dades de Chrome tamb&eacute; elimina els partits locals.</p>
-    </aside>
+    <section class="status-panel" aria-label="Partits guardats">
+      <div class="status-row"><span>Partits guardats</span><strong>${matches.length}</strong></div>
+    </section>
   `
 
   screen.querySelector('[data-action="new-match"]')?.addEventListener('click', () => {
@@ -81,6 +74,10 @@ export async function createHomeScreen(navigate: Navigate): Promise<HTMLElement>
 
   screen.querySelector('[data-action="history"]')?.addEventListener('click', () => {
     navigate({ screen: 'history' })
+  })
+
+  screen.querySelector('[data-action="teams"]')?.addEventListener('click', () => {
+    navigate({ screen: 'teams' })
   })
 
   return screen

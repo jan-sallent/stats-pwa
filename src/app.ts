@@ -2,7 +2,11 @@ import type { Navigate, Route } from './navigation'
 import { createHistoryScreen } from './screens/history'
 import { createHomeScreen } from './screens/home'
 import { createMatchScreen } from './screens/match'
+import { createMatchEventsScreen } from './screens/match-events'
 import { createNewMatchScreen } from './screens/new-match'
+import { createEventEditorScreen } from './screens/event-editor'
+import { createTeamEditorScreen } from './screens/team-editor'
+import { createTeamsScreen } from './screens/teams'
 
 export function startApp(root: HTMLElement): void {
   let currentRoute: Route = { screen: 'home' }
@@ -45,8 +49,16 @@ async function createScreen(route: Route, navigate: Navigate): Promise<HTMLEleme
       return createNewMatchScreen(navigate)
     case 'history':
       return createHistoryScreen(navigate)
+    case 'teams':
+      return createTeamsScreen(navigate)
+    case 'team-editor':
+      return createTeamEditorScreen(navigate, route.teamId)
     case 'match':
       return createMatchScreen(navigate, route.matchId)
+    case 'match-events':
+      return createMatchEventsScreen(navigate, route.matchId)
+    case 'event-editor':
+      return createEventEditorScreen(navigate, route.matchId, route.eventId)
     case 'home':
       return createHomeScreen(navigate)
   }

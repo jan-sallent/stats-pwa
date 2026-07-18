@@ -43,7 +43,7 @@ export async function createHistoryScreen(navigate: Navigate): Promise<HTMLEleme
     <section class="backup-toolbar">
       <div>
         <h2>C&ograve;pia de seguretat</h2>
-        <p>Permet restaurar tots els partits i registres dins de l'aplicaci&oacute;.</p>
+        <p>Permet restaurar equips, plantilles, partits i registres dins de l'aplicaci&oacute;.</p>
       </div>
       <div class="backup-actions">
         <button class="button button-secondary" data-action="backup" type="button">
@@ -124,7 +124,7 @@ export async function createHistoryScreen(navigate: Navigate): Promise<HTMLEleme
     try {
       const result = await restoreJsonBackup(file)
       window.alert(
-        `C\u00f2pia restaurada: ${result.matches} partits i ${result.events} registres.`,
+        `C\u00f2pia restaurada: ${result.teams} equips, ${result.players} jugadors, ${result.matches} partits i ${result.events} registres.`,
       )
       navigate({ screen: 'history' })
     } catch (error) {
