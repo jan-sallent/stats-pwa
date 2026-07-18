@@ -33,3 +33,9 @@ npm run preview
   desc&agrave;rrega directa al dispositiu.
 - Fase 7: c&ograve;pia JSON versionada, restauraci&oacute; no destructiva, eliminaci&oacute;
   transaccional i avisos sobre l'emmagatzematge local.
+- Fase 9: desplegament autom&agrave;tic a GitHub Pages preparat mitjan&ccedil;ant GitHub Actions.
+
+## Publicaci&oacute;
+
+Cada `push` a la branca `main` executa `.github/workflows/deploy.yml`, compila la PWA
+amb la ruta del repositori i publica el directori `dist` a GitHub Pages.
