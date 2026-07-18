@@ -1,3 +1,6 @@
+/** Utilitats de presentació compartides per les pantalles. */
+
+/** Escapa text extern abans d'inserir-lo en plantilles HTML construïdes com a text. */
 export function escapeHtml(value: string): string {
   return value
     .replaceAll('&', '&amp;')
@@ -8,6 +11,7 @@ export function escapeHtml(value: string): string {
 }
 
 export function formatMatchDate(value: string): string {
+  // Intl respecta el format català i la zona horària del dispositiu.
   const date = new Date(value)
 
   if (Number.isNaN(date.getTime())) {

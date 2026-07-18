@@ -1,3 +1,4 @@
+/** Helpers de l'API Storage per reduir el risc que el navegador elimini dades locals. */
 export type StoragePersistenceStatus = 'persistent' | 'best-effort' | 'unsupported'
 
 export async function getStoragePersistenceStatus(): Promise<StoragePersistenceStatus> {
@@ -13,6 +14,7 @@ export async function getStoragePersistenceStatus(): Promise<StoragePersistenceS
 }
 
 export async function requestPersistentStorage(): Promise<boolean> {
+  // La decisió final és del navegador; un false no impedeix utilitzar l'aplicació.
   if (!navigator.storage?.persist) {
     return false
   }

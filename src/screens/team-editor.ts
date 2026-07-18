@@ -1,3 +1,4 @@
+/** Formulari dinàmic per crear o editar un equip i tota la seva plantilla. */
 import { getTeamWithPlayers, saveTeam } from '../db/teams'
 import type { EntityId, PlayerRecord } from '../models/types'
 import type { Navigate } from '../navigation'
@@ -47,6 +48,7 @@ export async function createTeamEditorScreen(
   const errorMessage = screen.querySelector<HTMLElement>('[data-team-error]')
 
   const addPlayerCard = (player?: PlayerRecord): void => {
+    // Cada targeta és autònoma i pot eliminar-se sense rerenderitzar tot el formulari.
     if (!playerList) return
     playerList.insertAdjacentHTML('beforeend', createPlayerEditor(player))
     const card = playerList.lastElementChild
@@ -71,6 +73,7 @@ export async function createTeamEditorScreen(
     event.preventDefault()
     if (errorMessage) errorMessage.hidden = true
 
+    // El DOM és l'estat temporal de l'editor; en enviar es transforma al model de dades.
     const cards = [...form.querySelectorAll<HTMLElement>('[data-player-card]')]
     const players = cards.map((card) => ({
       id: getInputValue(card, 'playerId') || undefined,
@@ -113,6 +116,7 @@ export async function createTeamEditorScreen(
 }
 
 function createPlayerEditor(player?: PlayerRecord): string {
+  // Els valors persistits s'escapen perquè s'insereixen dins d'HTML generat com a text.
   return `
     <article class="player-editor" data-player-card>
       <input name="playerId" type="hidden" value="${escapeHtml(player?.id ?? '')}" />
@@ -154,6 +158,7 @@ function getInputValue(container: ParentNode, name: string): string {
 }
 
 function getTeamErrorMessage(error: unknown): string {
+  // Tradueix errors interns de domini a missatges útils per a l'usuari.
   if (!(error instanceof Error)) return "No s'ha pogut desar l'equip."
   if (error.message.includes('unique')) return 'No es poden repetir dorsals dins del mateix equip.'
   if (error.message.includes('At least one')) return 'Afegeix com a m\u00ednim un jugador.'

@@ -1,3 +1,4 @@
+/** Importació i exportació de plantilles entre dispositius en un JSON versionat. */
 import { db } from '../db/database'
 import { getPlayersByTeam, listTeams } from '../db/teams'
 import type { PlayerRecord, TeamRecord } from '../models/types'
@@ -36,6 +37,7 @@ export async function exportTeams(): Promise<void> {
 }
 
 export async function importTeams(file: File): Promise<TeamImportResult> {
+  // El límit evita carregar accidentalment fitxers enormes completament en memòria.
   if (file.size > maximumFileSize) throw new Error('FILE_TOO_LARGE')
   const transfer = parseTransfer(JSON.parse(await file.text()))
   if (!transfer) throw new Error('INVALID_TEAM_TRANSFER')
@@ -52,12 +54,14 @@ export async function importTeams(file: File): Promise<TeamImportResult> {
 }
 
 function parseTransfer(value: unknown): TeamTransfer | null {
+  // Les dades importades no es consideren segures fins que tota l'estructura és validada.
   if (!isRecord(value)) return null
   if (value.format !== transferFormat || value.version !== transferVersion) return null
   if (typeof value.exportedAt !== 'string') return null
   if (!Array.isArray(value.teams) || !Array.isArray(value.players)) return null
   if (!value.teams.every(isTeam) || !value.players.every(isPlayer)) return null
 
+  // També es comproven relacions i dorsals únics, no només tipus primitius.
   const teamIds = new Set(value.teams.map((team) => team.id))
   if (value.players.some((player) => !teamIds.has(player.teamId))) return null
   for (const team of value.teams) {
@@ -106,6 +110,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function downloadBlob(filename: string, blob: Blob): void {
+  // Mateix patró de descàrrega local que el CSV, però conservant el tipus JSON.
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url

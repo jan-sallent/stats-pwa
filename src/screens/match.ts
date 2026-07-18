@@ -1,3 +1,8 @@
+/**
+ * Flux principal de captura tàctil d'un partit.
+ * La pantalla es reconstrueix després de cada esdeveniment; l'estat transitori només controla
+ * quin pas del formulari és visible, mentre que IndexedDB conserva l'estat real del partit.
+ */
 import { getActionsForPhase, type MatchActionDefinition } from '../config/actions'
 import {
   addActionEvent,
@@ -30,6 +35,7 @@ export async function createMatchScreen(
   screen.className = 'app-shell match-shell'
 
   if (!match) return createMissingMatchScreen(screen, navigate)
+  // La fase inicial es pregunta després de crear el partit i abans de registrar cap acció.
   if (match.initialPhase === null) {
     return createInitialPhaseScreen(screen, navigate, match.id, match.opponent)
   }
@@ -40,6 +46,7 @@ export async function createMatchScreen(
     match.teamId ? getTeam(match.teamId) : Promise.resolve(undefined),
     match.teamId ? getPlayersByTeam(match.teamId) : Promise.resolve([]),
   ])
+  // La fase, part i possessió sempre es deriven de l'historial complet.
   const state = deriveMatchState(match, events)
 
   if (state.finished) {
@@ -48,6 +55,7 @@ export async function createMatchScreen(
 
   screen.classList.add(state.phase === 'attack' ? 'phase-attack-shell' : 'phase-defense-shell')
 
+  // Només la convocatòria del partit apareix als selectors de jugadors.
   const summonedIds = new Set(match.selectedPlayerIds)
   const summonedPlayers = sortPlayers(
     summonedIds.size > 0
@@ -64,6 +72,7 @@ export async function createMatchScreen(
         event.payload.period === state.period &&
         event.payload.teamSide === side,
     )
+  // Amb possessió pròpia pot demanar temps mort el CHSA; en defensa, l'equip rival.
   const allowedTimeoutSide: TeamSide = state.phase === 'attack' ? 'own' : 'opponent'
   const allowedTimeoutUsed = timeoutUsedBy(allowedTimeoutSide)
   const timeoutAction: MatchActionDefinition = {
@@ -222,6 +231,7 @@ export async function createMatchScreen(
     </div>
   `
 
+  // Estat efímer de l'assistent de tres passos; no es desa fins a confirmar el jugador.
   let selectedCategory: ActionCategory | undefined
   let selectedAction: MatchActionDefinition | undefined
   let selectedShotPosition: ShotPosition | null = null
@@ -244,6 +254,7 @@ export async function createMatchScreen(
   const refresh = (): void => navigate({ screen: 'match', matchId })
 
   const showCategoryPanel = (): void => {
+    // Reinicia completament l'assistent i torna al primer pas.
     selectedCategory = undefined
     selectedAction = undefined
     selectedShotPosition = null
@@ -255,6 +266,7 @@ export async function createMatchScreen(
   }
 
   const showDetailPanel = (category: ActionCategory): void => {
+    // En entrar a una categoria també es neteja qualsevol posició de tir anterior.
     selectedCategory = category
     selectedAction = undefined
     selectedShotPosition = null
@@ -280,6 +292,7 @@ export async function createMatchScreen(
           : null,
     endsPossession: boolean | undefined = undefined,
   ): Promise<void> => {
+    // El bloqueig local impedeix dobles tocs mentre IndexedDB desa l'esdeveniment.
     if (busy || !selectedAction) return
     busy = true
     setButtonsDisabled(screen, true)
@@ -317,6 +330,7 @@ export async function createMatchScreen(
 
   const showPlayerPanel = (action: MatchActionDefinition): void => {
     selectedAction = action
+    // Els llançaments defensius restringeixen el selector als porters convocats.
     const eligiblePlayers =
       action.playerSelection === 'goalkeepers'
         ? summonedPlayers.filter((player) => player.position === 'goalkeeper')
@@ -331,6 +345,7 @@ export async function createMatchScreen(
       selectedActionLabel.textContent = createSelectedActionLabel(action, selectedShotPosition)
     }
     if (rosterPicker) {
+      // En no-llançaments defensius els porters continuen disponibles, però en un bloc separat.
       const separateGoalkeepers =
         state.phase === 'defense' &&
         action.category === 'non-shot' &&
@@ -338,6 +353,7 @@ export async function createMatchScreen(
       rosterPicker.classList.toggle('is-separated', separateGoalkeepers)
       rosterPicker.hidden = eligiblePlayers.length === 0 && action.id !== 'two-minute'
       const opponentOption =
+        // Els 2 minuts poden correspondre a un jugador rival, del qual no es desa dorsal.
         action.id === 'two-minute'
           ? `<button class="opponent-player-button" data-two-minute-opponent type="button">
               <strong>Equip rival</strong>
@@ -382,6 +398,7 @@ export async function createMatchScreen(
       })
     }
 
+    // Els partits creats abans d'existir plantilles conserven l'entrada manual de dorsal.
     const isLegacyMatch = match.teamId === null
     if (playerForm) playerForm.hidden = !isLegacyMatch
     if (emptyRoster) {
@@ -460,6 +477,7 @@ export async function createMatchScreen(
     button.addEventListener('click', () => {
       const position = button.dataset.shotPosition as ShotPosition | undefined
       if (!position) return
+      // Tornar a prémer la mateixa opció la desmarca: la posició és opcional.
       selectedShotPosition = selectedShotPosition === position ? null : position
       updateShotPositionButtons(screen, selectedShotPosition)
     })
@@ -478,6 +496,7 @@ export async function createMatchScreen(
   })
 
   workflowBackButton?.addEventListener('click', () => {
+    // "ENRERE" desfà només el pas visual actual, mai un esdeveniment ja desat.
     if (busy) return
     if (timeoutPanel && !timeoutPanel.hidden) {
       showCategoryPanel()
@@ -513,6 +532,7 @@ export async function createMatchScreen(
   })
 
   screen.querySelector('[data-action="undo"]')?.addEventListener('click', async () => {
+    // "Desfer" sí que elimina l'últim esdeveniment persistent del partit.
     if (busy) return
     busy = true
     setButtonsDisabled(screen, true)
@@ -523,6 +543,7 @@ export async function createMatchScreen(
   screen.querySelector('[data-action="period-or-finish"]')?.addEventListener('click', async () => {
     if (busy) return
     if (state.period === 1) {
+      // La segona part comença automàticament en la fase contrària a la inicial.
       const startingPhase = oppositePhase(initialPhase)
       const startingLabel = startingPhase === 'attack' ? 'atac' : 'defensa'
       if (!window.confirm(`Vols iniciar la segona part? Començarà en ${startingLabel}.`)) return
@@ -547,6 +568,7 @@ export async function createMatchScreen(
 }
 
 function createActionButton(action: MatchActionDefinition): string {
+  // La classe de resultat aplica els colors contextuals de gol, parada i fora.
   const resultClass = action.id.endsWith('-out')
     ? 'is-result-out'
     : action.id.endsWith('-save')
@@ -576,6 +598,7 @@ function createSelectedActionLabel(
 }
 
 function sortPlayers(players: readonly PlayerRecord[]): PlayerRecord[] {
+  // Dorsal ascendent dins de cada grup i porters sempre al final.
   return [...players].sort((a, b) => {
     if (a.position !== b.position) return a.position === 'goalkeeper' ? 1 : -1
     return a.number - b.number
@@ -595,6 +618,7 @@ function createPlayerButton(player: PlayerRecord): string {
 }
 
 function createSeparatedRoster(players: readonly PlayerRecord[]): string {
+  // Presentació exclusiva de no-llançaments defensius.
   const courtPlayers = players.filter((player) => player.position === 'court')
   const goalkeepers = players.filter((player) => player.position === 'goalkeeper')
   return `
@@ -635,6 +659,7 @@ function createInitialPhaseScreen(
   matchId: EntityId,
   opponent: string,
 ): HTMLElement {
+  // Aquest pas existeix separat perquè el partit ja quedi desat abans de començar la captura.
   screen.className = 'app-shell initial-phase-screen'
   screen.innerHTML = `
     <header class="screen-header compact-header">
@@ -675,6 +700,7 @@ function createFinishedMatchScreen(
   opponent: string,
   events: readonly MatchEventRecord[],
 ): HTMLElement {
+  // Un partit finalitzat continua permetent consultar, editar l'historial i exportar-lo.
   screen.innerHTML = `
     <header class="screen-header">
       <button class="button button-ghost" data-action="back" type="button">Tornar</button>
@@ -712,6 +738,7 @@ function createFinishedMatchScreen(
 }
 
 function setButtonsDisabled(container: HTMLElement, disabled: boolean): void {
+  // Bloqueig global senzill per evitar que dues accions asíncrones se solapin.
   container.querySelectorAll<HTMLButtonElement>('button').forEach((button) => {
     button.disabled = disabled
   })

@@ -1,3 +1,7 @@
+/**
+ * Contracte de navegació intern.
+ * Cada variant conté exactament els identificadors que necessita la seva pantalla.
+ */
 import type { EntityId } from './models/types'
 
 export type Route =

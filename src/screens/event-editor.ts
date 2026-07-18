@@ -1,3 +1,7 @@
+/**
+ * Editor d'una acció ja registrada.
+ * En desar, la capa de dades recalcula fase i possessió de totes les accions posteriors.
+ */
 import {
   getActionsForPhase,
   type MatchActionDefinition,
@@ -41,6 +45,7 @@ export async function createEventEditorScreen(
       : teamPlayers,
   )
   const definitions = createEditorActions(payload.phase)
+  // Conserva accions antigues o desconegudes perquè també es puguin editar.
   if (!definitions.some((definition) => definition.id === payload.actionId)) {
     definitions.push({
       id: payload.actionId,
@@ -120,6 +125,7 @@ export async function createEventEditorScreen(
   const errorMessage = screen.querySelector<HTMLElement>('[data-editor-error]')
 
   const updateFields = (): void => {
+    // Mostra només els camps compatibles amb l'acció seleccionada.
     const definition = definitions.find((candidate) => candidate.id === actionSelect?.value)
     if (!definition) return
     const hasTeamSide = definition.id === 'two-minute' || definition.id === 'timeout'
@@ -187,6 +193,7 @@ export async function createEventEditorScreen(
       }
       return
     }
+    // Un temps mort només és vàlid per a l'equip que té la possessió en aquest model.
     if (
       definition.id === 'timeout' &&
       ((payload.phase === 'attack' && teamSide !== 'own') ||
@@ -201,6 +208,7 @@ export async function createEventEditorScreen(
       }
       return
     }
+    // Cada equip disposa d'un únic temps mort per part.
     if (
       definition.id === 'timeout' &&
       events.some(
@@ -226,6 +234,7 @@ export async function createEventEditorScreen(
         definition.id === 'timeout'
           ? `Temps mort ${teamSide === 'own' ? 'CHSA' : 'Equip rival'}`
           : definition.label
+      // Els 2 minuts només alternen fase en les dues combinacions definides pel flux.
       const endsPossession =
         definition.id === 'two-minute'
           ? (teamSide === 'own' && payload.phase === 'attack') ||
@@ -264,6 +273,7 @@ export async function createEventEditorScreen(
 }
 
 function createEditorActions(phase: 'attack' | 'defense'): MatchActionDefinition[] {
+  // Afegeix les accions especials al catàleg estàndard de la fase.
   return [
     ...getActionsForPhase(phase, 'shot'),
     ...getActionsForPhase(phase, 'non-shot'),
@@ -292,6 +302,7 @@ function getCategoryLabel(definition: MatchActionDefinition): string {
 }
 
 function createPlayerOptions(players: readonly PlayerRecord[], selectedId: string | null): string {
+  // Els optgroup mantenen els porters visualment separats al final.
   const courtPlayers = players.filter((player) => player.position === 'court')
   const goalkeepers = players.filter((player) => player.position === 'goalkeeper')
   return `

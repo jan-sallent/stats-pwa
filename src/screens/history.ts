@@ -1,3 +1,4 @@
+/** Historial de partits, exportacions, còpies de seguretat i eliminació. */
 import { downloadJsonBackup, restoreJsonBackup } from '../backup/json-backup'
 import { getMatchEvents } from '../db/events'
 import { deleteMatchAndEvents, listMatchesNewestFirst } from '../db/matches'
@@ -10,6 +11,7 @@ export async function createHistoryScreen(navigate: Navigate): Promise<HTMLEleme
   const matches = await listMatchesNewestFirst()
   const eventCounts = new Map<string, number>()
 
+  // El recompte es calcula des de la taula d'esdeveniments i no es duplica al partit.
   await Promise.all(
     matches.map(async (match) => {
       const events = await getMatchEvents(match.id)
@@ -164,6 +166,7 @@ export async function createHistoryScreen(navigate: Navigate): Promise<HTMLEleme
 }
 
 function createMatchCard(match: MatchRecord, eventCount: number): string {
+  // Tots els textos introduïts per l'usuari passen per escapeHtml abans d'arribar al DOM.
   const statusLabel = match.status === 'finished' ? 'Finalitzat' : 'En curs'
   const actionLabel = match.status === 'finished' ? 'Veure resum' : 'Continuar'
 
@@ -198,6 +201,7 @@ async function runExport(
   exportAction: () => Promise<void>,
   successMessage = 'CSV descarregat al dispositiu.',
 ): Promise<void> {
+  // Centralitza l'estat de càrrega i els missatges de totes les descàrregues.
   const originalLabel = button.textContent
   button.disabled = true
   button.textContent = 'Preparant...'

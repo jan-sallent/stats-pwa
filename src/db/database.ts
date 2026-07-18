@@ -1,3 +1,7 @@
+/**
+ * Definició d'IndexedDB mitjançant Dexie.
+ * Cada versió conserva compatibilitat amb dades creades per versions anteriors de RAiP.
+ */
 import Dexie, { type EntityTable } from 'dexie'
 import type {
   MatchEventRecord,
@@ -7,6 +11,7 @@ import type {
 } from '../models/types'
 
 class HandbolDatabase extends Dexie {
+  // EntityTable aporta tipatge tant al registre com a la seva clau primària.
   matches!: EntityTable<MatchRecord, 'id'>
   events!: EntityTable<MatchEventRecord, 'id'>
   teams!: EntityTable<TeamRecord, 'id'>
@@ -15,11 +20,13 @@ class HandbolDatabase extends Dexie {
   constructor() {
     super('handbol-stats')
 
+    // Versió inicial: partits i esdeveniments sense plantilles.
     this.version(1).stores({
       matches: 'id, status, createdAt, updatedAt',
       events: 'id, matchId, [matchId+sequence], createdAt',
     })
 
+    // Afegeix els camps de planificació del partit i completa registres antics.
     this.version(2)
       .stores({
         matches: 'id, status, scheduledAt, updatedAt',
@@ -38,6 +45,7 @@ class HandbolDatabase extends Dexie {
           }),
       )
 
+    // Introdueix equips i jugadors, i enllaça els partits amb una plantilla.
     this.version(3)
       .stores({
         matches: 'id, teamId, status, scheduledAt, updatedAt',
@@ -66,6 +74,7 @@ class HandbolDatabase extends Dexie {
           })
       })
 
+    // Desa la convocatòria i la classificació detallada de les accions.
     this.version(4)
       .stores({
         matches: 'id, teamId, status, scheduledAt, updatedAt',
@@ -91,6 +100,7 @@ class HandbolDatabase extends Dexie {
           })
       })
 
+    // Identifica si una acció correspon al CHSA o a l'equip rival.
     this.version(5)
       .stores({
         matches: 'id, teamId, status, scheduledAt, updatedAt',
@@ -118,5 +128,6 @@ class HandbolDatabase extends Dexie {
 export const db = new HandbolDatabase()
 
 export function createEntityId(): string {
+  // UUID evita col·lisions també quan s'importen dades entre dispositius.
   return crypto.randomUUID()
 }

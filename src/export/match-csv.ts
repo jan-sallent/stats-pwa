@@ -1,3 +1,4 @@
+/** Transformació del model relacional local al CSV d'anàlisi. */
 import { getMatchEvents } from '../db/events'
 import { getMatch, listMatchesNewestFirst } from '../db/matches'
 import { getTeam } from '../db/teams'
@@ -37,6 +38,7 @@ interface MatchCsvRow {
   data_registre: string
 }
 
+// L'ordre d'aquesta llista és l'ordre estable de les columnes del fitxer final.
 const columns: readonly CsvColumn<MatchCsvRow>[] = [
   { header: 'partit_id', value: (row) => row.partit_id },
   { header: 'equip_id', value: (row) => row.equip_id },
@@ -81,6 +83,7 @@ export async function downloadMatchCsv(matchId: string): Promise<void> {
 }
 
 export async function downloadAllMatchesCsv(): Promise<void> {
+  // Les files de tots els partits comparteixen exactament el mateix esquema.
   const matches = await listMatchesNewestFirst()
   const rows = (
     await Promise.all(
@@ -102,6 +105,7 @@ function createMatchRows(
   events: readonly MatchEventRecord[],
   teamName: string,
 ): MatchCsvRow[] {
+  // Un partit sense accions conserva una fila perquè les seves metadades no es perdin.
   if (events.length === 0) {
     return [createEmptyMatchRow(match, teamName)]
   }
@@ -117,6 +121,7 @@ function createEventRow(
   const common = createCommonFields(match, teamName)
 
   if (event.payload.kind === 'period-change') {
+    // Els canvis de part són registres tècnics: no pertanyen a cap fase ni possessió.
     return {
       ...common,
       registre_id: event.id,
@@ -236,6 +241,7 @@ function translatePlayerPosition(position: 'court' | 'goalkeeper' | null): strin
 }
 
 function createMatchFilename(match: MatchRecord, teamName: string): string {
+  // Les barres de data/hora se substitueixen per guions perquè siguin vàlides al sistema de fitxers.
   const team = createFilenamePart(teamName || 'equip')
   const opponent = createFilenamePart(match.opponent || 'sense-rival')
   const dateAndTime = createFilenameDateTime(match.scheduledAt)
@@ -243,6 +249,7 @@ function createMatchFilename(match: MatchRecord, teamName: string): string {
 }
 
 function createFilenameDateTime(value: string): string {
+  // datetime-local arriba normalment com AAAA-MM-DDTHH:MM.
   const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(value)
   if (match) {
     const [, year, month, day, hour, minute] = match
@@ -259,6 +266,7 @@ function createFilenameDateTime(value: string): string {
 }
 
 function createFilenamePart(value: string): string {
+  // Normalitza accents, espais i símbols per obtenir un nom portable entre sistemes operatius.
   const normalized = value
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
@@ -274,5 +282,6 @@ function getDateStamp(): string {
 }
 
 function protectSpreadsheetText(value: string): string {
+  // Evita que Excel interpreti text introduït per l'usuari com una fórmula executable.
   return /^[=+\-@]/.test(value) ? `'${value}` : value
 }

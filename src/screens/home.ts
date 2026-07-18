@@ -1,8 +1,10 @@
+/** Pantalla inicial i accessos als quatre fluxos principals de RAiP. */
 import { listMatchesNewestFirst } from '../db/matches'
 import { listTeams } from '../db/teams'
 import type { Navigate } from '../navigation'
 
 export async function createHomeScreen(navigate: Navigate): Promise<HTMLElement> {
+  // Les consultes són independents i es resolen en paral·lel per reduir el temps de càrrega.
   const [matches, teams] = await Promise.all([
     listMatchesNewestFirst(),
     listTeams(),

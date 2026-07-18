@@ -1,3 +1,4 @@
+/** Comprovació mínima del format CSV sense necessitar cap framework de proves. */
 import { serializeCsv } from '../src/export/csv.ts'
 
 const csv = serializeCsv(
@@ -10,6 +11,7 @@ const csv = serializeCsv(
 )
 
 const checks = [
+  // BOM, delimitador citat, cometes escapades i final de línia CRLF.
   csv.startsWith('\uFEFF'),
   csv.includes('"Granollers; Nord"'),
   csv.includes('"A""B"'),

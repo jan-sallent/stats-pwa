@@ -1,3 +1,4 @@
+/** Lectura i escriptura de l'historial immutable —excepte edició explícita— d'un partit. */
 import Dexie from 'dexie'
 import type {
   ActionEventPayload,
@@ -31,6 +32,7 @@ export async function addPeriodChangeEvent(
 }
 
 export async function undoLastEvent(matchId: EntityId): Promise<boolean> {
+  // Desfer elimina únicament l'esdeveniment amb la seqüència més alta.
   return db.transaction('rw', db.matches, db.events, async () => {
     const event = await getLastEvent(matchId)
 
@@ -56,6 +58,7 @@ export async function updateActionEvent(
   eventId: EntityId,
   payload: ActionEventPayload,
 ): Promise<void> {
+  // Editar una acció pot canviar totes les possessions posteriors; per això es recalculen.
   await db.transaction('rw', db.matches, db.events, async () => {
     const [match, event] = await Promise.all([
       db.matches.get(matchId),
@@ -101,6 +104,7 @@ async function addEvent(
   matchId: EntityId,
   payload: MatchEventRecord['payload'],
 ): Promise<MatchEventRecord> {
+  // Calcular i inserir la seqüència dins la mateixa transacció evita duplicats locals.
   return db.transaction('rw', db.matches, db.events, async () => {
     const match = await db.matches.get(matchId)
 
@@ -129,6 +133,7 @@ async function addEvent(
 }
 
 function getLastEvent(matchId: EntityId): Promise<MatchEventRecord | undefined> {
+  // L'índex compost permet cercar l'últim registre sense carregar tot el partit.
   return db.events
     .where('[matchId+sequence]')
     .between([matchId, Dexie.minKey], [matchId, Dexie.maxKey])

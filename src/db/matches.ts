@@ -1,3 +1,4 @@
+/** Persistència del cicle de vida d'un partit. */
 import type { EntityId, MatchRecord, Phase } from '../models/types'
 import { createEntityId, db } from './database'
 
@@ -11,6 +12,7 @@ export interface CreateMatchInput {
 }
 
 export async function createMatchDraft(input: CreateMatchInput): Promise<MatchRecord> {
+  // El Set elimina seleccions repetides abans de validar-les contra la plantilla.
   const selectedPlayerIds = [...new Set(input.selectedPlayerIds)]
   if (selectedPlayerIds.length === 0) throw new Error('At least one selected player is required')
 
@@ -47,6 +49,7 @@ export async function openMatch(id: EntityId): Promise<MatchRecord | undefined> 
     return undefined
   }
 
+  // Un esborrany amb fase inicial ja definida és, per compatibilitat, un partit en curs.
   const updatedMatch: MatchRecord = {
     ...match,
     status:
@@ -80,6 +83,7 @@ export function getMatch(id: EntityId): Promise<MatchRecord | undefined> {
 }
 
 export async function deleteMatchAndEvents(id: EntityId): Promise<void> {
+  // La transacció impedeix deixar esdeveniments orfes si alguna operació falla.
   await db.transaction('rw', db.matches, db.events, async () => {
     await db.events.where('matchId').equals(id).delete()
     await db.matches.delete(id)

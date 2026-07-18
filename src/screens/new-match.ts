@@ -1,3 +1,4 @@
+/** Configuració d'un partit i selecció de la convocatòria abans de començar-lo. */
 import { createMatchDraft } from '../db/matches'
 import { requestPersistentStorage } from '../db/storage'
 import { getPlayersByTeam, listTeams } from '../db/teams'
@@ -16,6 +17,7 @@ export async function createNewMatchScreen(navigate: Navigate): Promise<HTMLElem
   screen.className = 'app-shell'
 
   if (teams.length === 0) {
+    // Sense plantilla no es pot crear una convocatòria vàlida.
     screen.innerHTML = `
       <header class="screen-header compact-header">
         <button class="button button-ghost" data-action="back" type="button">Enrere</button>
@@ -110,6 +112,7 @@ export async function createNewMatchScreen(navigate: Navigate): Promise<HTMLElem
   const squadGrid = screen.querySelector<HTMLElement>('[data-squad-grid]')
 
   const renderSquad = (): void => {
+    // Canviar d'equip reconstrueix la convocatòria i marca tots els jugadors per defecte.
     if (!teamSelect || !squadGrid) return
     const players = sortPlayers(playersByTeam.get(teamSelect.value) ?? [])
     squadGrid.innerHTML = players
@@ -140,6 +143,7 @@ export async function createNewMatchScreen(navigate: Navigate): Promise<HTMLElem
       errorMessage.hidden = true
     }
 
+    // Es demana persistència, però no es bloqueja el partit si el navegador no la concedeix.
     void requestPersistentStorage()
 
     try {
@@ -179,6 +183,7 @@ export async function createNewMatchScreen(navigate: Navigate): Promise<HTMLElem
 }
 
 function sortPlayers(players: readonly PlayerRecord[]): PlayerRecord[] {
+  // Jugadors de camp primer, porters al final; dins de cada grup, dorsal ascendent.
   return [...players].sort((a, b) => {
     if (a.position !== b.position) return a.position === 'goalkeeper' ? 1 : -1
     return a.number - b.number
@@ -190,6 +195,7 @@ function getFormValue(data: FormData, field: string): string {
 }
 
 function getDefaultDateTime(): string {
+  // datetime-local necessita hora local sense indicador de zona horària.
   const now = new Date()
   const localNow = new Date(now.getTime() - now.getTimezoneOffset() * 60_000)
   return localNow.toISOString().slice(0, 16)

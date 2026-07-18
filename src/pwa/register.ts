@@ -1,6 +1,8 @@
+/** Registre i actualització del service worker generat per vite-plugin-pwa. */
 import { registerSW } from 'virtual:pwa-register'
 
 export function registerPwa(): void {
+  // El mode "prompt" deixa que l'usuari decideixi quan recarregar una versió nova.
   const updateServiceWorker = registerSW({
     onNeedRefresh() {
       const shouldUpdate = window.confirm(

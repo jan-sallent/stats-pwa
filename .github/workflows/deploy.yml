@@ -1,5 +1,6 @@
 name: Deploy PWA to GitHub Pages
 
+# Cada push a main compila i publica una versió estàtica; també es pot executar manualment.
 on:
   push:
     branches: [main]
@@ -36,6 +37,7 @@ jobs:
       - name: Build application
         run: npm run build
         env:
+          # GitHub Pages allotja el projecte sota /nom-del-repositori/.
           PWA_BASE_PATH: /${{ github.event.repository.name }}/
 
       - name: Upload GitHub Pages artifact

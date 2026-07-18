@@ -1,12 +1,15 @@
+/** Configuració de compilació, manifest instal·lable i memòria cau fora de línia. */
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
+// En local l'arrel és "/"; GitHub Pages injecta "/stats-pwa/" durant el desplegament.
 const base = process.env.PWA_BASE_PATH ?? '/'
 
 export default defineConfig({
   base,
   plugins: [
     VitePWA({
+      // L'usuari confirma les actualitzacions per no interrompre una captura en curs.
       registerType: 'prompt',
       includeAssets: ['favicon.ico', 'logo.svg', 'apple-touch-icon-180x180.png'],
       manifest: {
@@ -40,6 +43,7 @@ export default defineConfig({
         ],
       },
       workbox: {
+        // El service worker elimina caches antics i serveix index.html per a la SPA.
         cleanupOutdatedCaches: true,
         navigateFallback: 'index.html',
       },

@@ -1,3 +1,4 @@
+/** Operacions transaccionals sobre plantilles i jugadors. */
 import type {
   EntityId,
   PlayerPosition,
@@ -45,6 +46,7 @@ export async function getTeamWithPlayers(id: EntityId): Promise<TeamWithPlayers 
 }
 
 export async function saveTeam(input: SaveTeamInput): Promise<TeamWithPlayers> {
+  // Les validacions de domini es repeteixen aquí encara que el formulari també validi.
   const name = input.name.trim()
   if (!name) throw new Error('Team name is required')
   if (input.players.length === 0) throw new Error('At least one player is required')
@@ -54,6 +56,7 @@ export async function saveTeam(input: SaveTeamInput): Promise<TeamWithPlayers> {
     throw new Error('Player numbers must be unique inside a team')
   }
 
+  // Equip i jugadors s'actualitzen de manera atòmica: o es desa tot o no es desa res.
   return db.transaction('rw', db.teams, db.players, async () => {
     const existingTeam = input.id ? await db.teams.get(input.id) : undefined
     if (input.id && !existingTeam) throw new Error('Team not found')
@@ -92,6 +95,7 @@ export async function saveTeam(input: SaveTeamInput): Promise<TeamWithPlayers> {
     }
 
     await db.teams.put(team)
+    // Reemplaçar la llista simplifica eliminacions i conserva els IDs rebuts al formulari.
     await db.players.where('teamId').equals(teamId).delete()
     await db.players.bulkPut(players)
     return { team, players: players.sort((a, b) => a.number - b.number) }
@@ -100,6 +104,7 @@ export async function saveTeam(input: SaveTeamInput): Promise<TeamWithPlayers> {
 
 export async function deleteTeam(teamId: EntityId): Promise<void> {
   await db.transaction('rw', db.teams, db.players, db.matches, async () => {
+    // No s'elimina una plantilla que encara dona context a partits històrics.
     const linkedMatches = await db.matches.where('teamId').equals(teamId).count()
     if (linkedMatches > 0) throw new Error('TEAM_IN_USE')
     await db.players.where('teamId').equals(teamId).delete()

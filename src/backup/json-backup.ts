@@ -1,3 +1,7 @@
+/**
+ * Còpia de seguretat completa de les quatre taules de l'aplicació.
+ * El normalitzador accepta versions antigues i les converteix al model actual abans de desar.
+ */
 import { db } from '../db/database'
 import { getMatchEvents } from '../db/events'
 import { listMatchesNewestFirst } from '../db/matches'
@@ -34,6 +38,7 @@ export interface RestoreResult {
 }
 
 export async function downloadJsonBackup(): Promise<void> {
+  // Es carreguen equips i partits en paral·lel, i després les seves relacions.
   const [teams, matches] = await Promise.all([listTeams(), listMatchesNewestFirst()])
   const [playerLists, eventLists] = await Promise.all([
     Promise.all(teams.map((team) => getPlayersByTeam(team.id))),
@@ -61,6 +66,7 @@ export async function restoreJsonBackup(file: File): Promise<RestoreResult> {
   const backup = normalizeBackup(JSON.parse(await file.text()))
   if (!backup) throw new Error('Invalid backup format')
 
+  // bulkPut fusiona per ID; la restauració no elimina registres locals absents del fitxer.
   await db.transaction('rw', db.teams, db.players, db.matches, db.events, async () => {
     await db.teams.bulkPut(backup.teams)
     for (const team of backup.teams) {
@@ -80,6 +86,7 @@ export async function restoreJsonBackup(file: File): Promise<RestoreResult> {
 }
 
 function normalizeBackup(value: unknown): AppBackup | null {
+  // Les versions 1–3 s'accepten explícitament per no perdre còpies antigues.
   if (!isRecord(value)) return null
   if (
     value.format !== backupFormat ||
@@ -103,6 +110,7 @@ function normalizeBackup(value: unknown): AppBackup | null {
   const events = collectNormalized(value.events, normalizeMatchEventRecord)
   if (!teams || !players || !matches || !events) return null
 
+  // Després de validar cada registre, es validen totes les claus foranes.
   const teamIds = new Set(teams.map((team) => team.id))
   const playersById = new Map(players.map((player) => [player.id, player]))
   const matchIds = new Set(matches.map((match) => match.id))
@@ -135,6 +143,7 @@ function collectNormalized<T>(
   values: unknown[],
   normalize: (value: unknown) => T | null,
 ): T[] | null {
+  // Un únic element invàlid invalida tot el fitxer i evita restauracions parcials.
   const result: T[] = []
   for (const value of values) {
     const normalized = normalize(value)
@@ -274,6 +283,7 @@ function normalizeActionEventPayload(value: Record<string, unknown>): ActionEven
   const playerNumber = value.playerNumber === undefined ? null : value.playerNumber
   if (playerNumber !== null && !Number.isInteger(playerNumber)) return null
 
+  // Els valors per defecte mantenen compatibilitat amb backups previs al model actual.
   const playerPosition =
     value.playerPosition === undefined
       ? playerNumber === null

@@ -1,9 +1,11 @@
+/** Llistat, transferència i eliminació de plantilles locals. */
 import { exportTeams, importTeams } from '../backup/team-transfer'
 import { deleteTeam, getPlayersByTeam, listTeams } from '../db/teams'
 import type { Navigate } from '../navigation'
 import { escapeHtml } from '../ui/format'
 
 export async function createTeamsScreen(navigate: Navigate): Promise<HTMLElement> {
+  // Es precalculen les plantilles completes per poder mostrar els dos comptadors.
   const teams = await listTeams()
   const playerLists = new Map(
     await Promise.all(
@@ -105,6 +107,7 @@ export async function createTeamsScreen(navigate: Navigate): Promise<HTMLElement
 
   importButton?.addEventListener('click', () => fileInput?.click())
   fileInput?.addEventListener('change', async () => {
+    // L'input queda ocult: el botó visible conserva un disseny coherent i accessible.
     const file = fileInput.files?.[0]
     if (!file || !importButton) return
     importButton.disabled = true
@@ -127,6 +130,7 @@ export async function createTeamsScreen(navigate: Navigate): Promise<HTMLElement
       const teamId = button.dataset.deleteTeamId
       const team = teams.find((candidate) => candidate.id === teamId)
       if (!teamId || !team) return
+      // La base de dades farà una segona validació per impedir eliminar equips en ús.
       if (!window.confirm(`Vols eliminar la plantilla ${team.name}?`)) return
       button.disabled = true
       try {

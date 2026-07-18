@@ -1,3 +1,4 @@
+/** Historial invers d'un partit i punt d'entrada a l'edició de cada acció. */
 import { getMatchEvents } from '../db/events'
 import { getMatch } from '../db/matches'
 import type { MatchEventRecord } from '../models/types'
@@ -31,6 +32,7 @@ export async function createMatchEventsScreen(
       ${
         events.length === 0
           ? `<div class="empty-state"><h2>Encara no hi ha accions</h2></div>`
+          // La còpia evita invertir la matriu canònica retornada per la base de dades.
           : [...events].reverse().map(createEventCard).join('')
       }
     </section>
@@ -49,6 +51,7 @@ export async function createMatchEventsScreen(
 }
 
 function createEventCard(event: MatchEventRecord): string {
+  // Els canvis de part no són accions editables i es mostren com a separadors.
   if (event.payload.kind === 'period-change') {
     return `
       <article class="period-history-divider">

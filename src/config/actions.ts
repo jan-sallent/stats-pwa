@@ -1,3 +1,4 @@
+/** Catàleg únic d'accions disponibles durant la captura d'un partit. */
 import type { ActionCategory, Phase } from '../models/types'
 
 export type PlayerSelection = 'all' | 'goalkeepers' | 'none'
@@ -11,6 +12,7 @@ export interface MatchActionDefinition {
   endsPossession: boolean
 }
 
+// La definició central evita duplicar regles entre la pantalla de partit i l'editor.
 export const matchActions: readonly MatchActionDefinition[] = [
   { id: 'attack-shot-out', label: 'Fora', phase: 'attack', category: 'shot', playerSelection: 'all', endsPossession: true },
   { id: 'attack-shot-save', label: 'Parada', phase: 'attack', category: 'shot', playerSelection: 'all', endsPossession: true },
@@ -33,6 +35,7 @@ export function getActionsForPhase(
   phase: Phase,
   category: ActionCategory,
 ): MatchActionDefinition[] {
+  // Es retorna una matriu nova perquè la UI la pugui ampliar sense mutar el catàleg.
   return matchActions.filter(
     (action) => action.phase === phase && action.category === category,
   )

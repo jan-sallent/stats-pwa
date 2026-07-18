@@ -1,3 +1,7 @@
+/**
+ * Reductor del partit: reconstrueix l'estat visible a partir del partit i el seu historial.
+ * No desa res; la seqüència d'esdeveniments és l'única font de veritat del marcador de possessió.
+ */
 import type { MatchEventRecord, MatchPeriod, MatchRecord, Phase } from '../models/types'
 
 export interface MatchSessionState {
@@ -23,6 +27,7 @@ export function deriveMatchState(
     defense: initialPhase === 'defense' ? 1 : 0,
   }
 
+  // Reproduir els esdeveniments permet desfer o editar sense mantenir comptadors duplicats.
   for (const event of events) {
     if (event.payload.kind === 'period-change') {
       period = 2
@@ -55,5 +60,6 @@ export function deriveMatchState(
 }
 
 export function oppositePhase(phase: Phase): Phase {
+  // En aquest model cada possessió acabada alterna sempre atac i defensa.
   return phase === 'attack' ? 'defense' : 'attack'
 }

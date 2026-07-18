@@ -1,3 +1,7 @@
+/**
+ * Orquestrador principal de la interfície.
+ * RAiP és una SPA petita: cada ruta crea un element HTML i substitueix la pantalla anterior.
+ */
 import type { Navigate, Route } from './navigation'
 import { createHistoryScreen } from './screens/history'
 import { createHomeScreen } from './screens/home'
@@ -10,6 +14,7 @@ import { createTeamsScreen } from './screens/teams'
 
 export function startApp(root: HTMLElement): void {
   let currentRoute: Route = { screen: 'home' }
+  // Permet descartar un renderitzat asíncron antic si l'usuari navega molt ràpid.
   let renderRequest = 0
 
   const navigate: Navigate = (route) => {
@@ -17,6 +22,7 @@ export function startApp(root: HTMLElement): void {
     void render()
   }
 
+  /** Construeix la ruta actual i només la mostra si continua sent l'última sol·licitud. */
   const render = async (): Promise<void> => {
     const request = ++renderRequest
     root.setAttribute('aria-busy', 'true')
@@ -45,6 +51,7 @@ export function startApp(root: HTMLElement): void {
 }
 
 async function createScreen(route: Route, navigate: Navigate): Promise<HTMLElement> {
+  // El switch exhaustiu fa que TypeScript avisi si s'afegeix una ruta sense pantalla.
   switch (route.screen) {
     case 'new-match':
       return createNewMatchScreen(navigate)
@@ -66,6 +73,7 @@ async function createScreen(route: Route, navigate: Navigate): Promise<HTMLEleme
 }
 
 function createErrorScreen(navigate: Navigate): HTMLElement {
+  // Pantalla de recuperació: informa de l'error sense esborrar les dades d'IndexedDB.
   const screen = document.createElement('main')
   screen.className = 'app-shell home-screen'
   screen.innerHTML = `
