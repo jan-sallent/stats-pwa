@@ -728,23 +728,23 @@ svg {
 }
 
 .action-button.is-result-out {
-  border-color: #d9a900;
-  color: #2c2500;
-  background: #ffd84d;
+  border-color: #dbc979;
+  color: #5f5113;
+  background: #fff3bc;
 }
 
 .phase-attack-shell .action-button.is-result-save,
 .phase-defense-shell .action-button.is-result-goal {
-  border-color: #9f2d26;
-  color: #ffffff;
-  background: #bd3c33;
+  border-color: #dda5a0;
+  color: #7d2d27;
+  background: #f6d6d3;
 }
 
 .phase-attack-shell .action-button.is-result-goal,
 .phase-defense-shell .action-button.is-result-save {
-  border-color: #066044;
-  color: #ffffff;
-  background: #08724f;
+  border-color: #9bc9b8;
+  color: #215f49;
+  background: #d5eee5;
 }
 
 .player-panel,
@@ -809,24 +809,33 @@ svg {
 }
 
 .button-undo {
-  color: #ffffff;
-  background: #b8322a;
+  border: 1px solid #e0aaa5;
+  color: #7d2d27;
+  background: #f6d6d3;
 }
 
 .button-period {
-  color: #ffffff;
-  background: #285da8;
+  border: 1px solid #a9bfdc;
+  color: #31567f;
+  background: #dce8f7;
+}
+
+.match-controls [data-action="event-history"] {
+  border: 1px solid #e2bd94;
+  color: #7f480f;
+  background: #ffe5c9;
+  box-shadow: none;
 }
 
 .workflow-back-button {
   width: 100%;
   min-height: 5.5rem;
-  border: 4px solid #171717;
+  border: 2px solid #d7c276;
   border-radius: 1rem;
   padding: 1rem;
-  color: #171717;
-  background: #ffd84d;
-  box-shadow: 0 10px 24px rgb(0 0 0 / 18%);
+  color: #655718;
+  background: #fff2bd;
+  box-shadow: 0 6px 16px rgb(78 65 20 / 12%);
   font-size: 1.35rem;
   font-weight: 950;
   letter-spacing: 0.08em;
