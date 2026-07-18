@@ -181,9 +181,7 @@ export async function createNewMatchScreen(navigate: Navigate): Promise<HTMLElem
 function sortPlayers(players: readonly PlayerRecord[]): PlayerRecord[] {
   return [...players].sort((a, b) => {
     if (a.position !== b.position) return a.position === 'goalkeeper' ? 1 : -1
-    const aName = a.nickname || `${a.firstName} ${a.lastName}`
-    const bName = b.nickname || `${b.firstName} ${b.lastName}`
-    return aName.localeCompare(bName, 'ca', { sensitivity: 'base' })
+    return a.number - b.number
   })
 }
 

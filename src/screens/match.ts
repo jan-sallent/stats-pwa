@@ -16,6 +16,7 @@ import type {
   MatchEventRecord,
   PlayerRecord,
   ShotPosition,
+  TeamSide,
 } from '../models/types'
 import type { Navigate } from '../navigation'
 import { escapeHtml } from '../ui/format'
@@ -55,12 +56,16 @@ export async function createMatchScreen(
   )
   const shotActions = getActionsForPhase(state.phase, 'shot')
   const nonShotActions = getActionsForPhase(state.phase, 'non-shot')
-  const timeoutUsed = events.some(
-    (event) =>
-      event.payload.kind === 'action' &&
-      event.payload.actionId === 'timeout' &&
-      event.payload.period === state.period,
-  )
+  const timeoutUsedBy = (side: TeamSide): boolean =>
+    events.some(
+      (event) =>
+        event.payload.kind === 'action' &&
+        event.payload.actionId === 'timeout' &&
+        event.payload.period === state.period &&
+        event.payload.teamSide === side,
+    )
+  const allowedTimeoutSide: TeamSide = state.phase === 'attack' ? 'own' : 'opponent'
+  const allowedTimeoutUsed = timeoutUsedBy(allowedTimeoutSide)
   const timeoutAction: MatchActionDefinition = {
     id: 'timeout',
     label: 'Temps mort',
@@ -75,7 +80,7 @@ export async function createMatchScreen(
     phase: state.phase,
     category: 'non-shot',
     playerSelection: 'all',
-    endsPossession: state.phase === 'attack',
+    endsPossession: false,
   }
   const phaseLabel = state.phase === 'attack' ? 'ATAC' : 'DEFENSA'
   const phaseClass = state.phase === 'attack' ? 'is-attack' : 'is-defense'
@@ -93,7 +98,7 @@ export async function createMatchScreen(
       </div>
       <div class="possession-dashboard">
         <div>
-          <span>Possessi&oacute; d'${state.phase === 'attack' ? 'atac' : 'defensa'}</span>
+          <span>Possessi&oacute; ${state.phase === 'attack' ? "d'atac" : 'de defensa'}</span>
           <strong>${state.phasePossession}</strong>
         </div>
         <div>
@@ -125,9 +130,17 @@ export async function createMatchScreen(
         </button>
       </div>
       <aside class="timeout-action-box">
-        <span>Acci&oacute; de partit</span>
-        <button class="special-action-button is-timeout" data-action="timeout" type="button" ${timeoutUsed ? 'disabled' : ''}>
-          ${timeoutUsed ? 'Temps mort utilitzat' : 'Marcar temps mort'}
+        <span>Temps mort</span>
+        <button class="special-action-button is-timeout" data-action="timeout" type="button" ${allowedTimeoutUsed ? 'disabled' : ''}>
+          ${
+            allowedTimeoutSide === 'own'
+              ? allowedTimeoutUsed
+                ? 'CHSA utilitzat'
+                : 'CHSA'
+              : allowedTimeoutUsed
+                ? 'Equip rival utilitzat'
+                : 'Equip rival'
+          }
         </button>
       </aside>
     </section>
@@ -138,7 +151,6 @@ export async function createMatchScreen(
           <p class="eyebrow">Pas 2</p>
           <h1 data-detail-title></h1>
         </div>
-        <button class="button button-ghost compact-button" data-action="back-category" type="button">Enrere</button>
       </div>
 
       <div data-shot-details hidden>
@@ -169,7 +181,6 @@ export async function createMatchScreen(
           <p class="eyebrow">Pas 3</p>
           <h1>Quin jugador?</h1>
         </div>
-        <button class="button button-ghost compact-button" data-action="cancel-player" type="button">Enrere</button>
       </div>
       <p class="selected-action" data-selected-action></p>
       <div class="roster-picker" data-roster-picker></div>
@@ -183,15 +194,32 @@ export async function createMatchScreen(
       </form>
     </section>
 
+    <section class="capture-panel timeout-panel" data-timeout-panel hidden>
+      <p class="eyebrow">Temps mort</p>
+      <h1>De qui &eacute;s?</h1>
+      <div class="timeout-team-grid">
+        <button class="timeout-team-button is-own" data-timeout-side="own" type="button">
+          CHSA${timeoutUsedBy('own') ? ' · utilitzat' : ''}
+        </button>
+        <button class="timeout-team-button is-opponent" data-timeout-side="opponent" type="button">
+          Equip rival${timeoutUsedBy('opponent') ? ' · utilitzat' : ''}
+        </button>
+      </div>
+      <p class="error-message" data-timeout-error role="alert" hidden></p>
+    </section>
+
     <p class="error-message" data-event-error role="alert" hidden></p>
 
-    <footer class="match-controls">
-      <button class="button button-ghost" data-action="undo" type="button" ${events.length === 0 ? 'disabled' : ''}>Desfer</button>
-      <button class="button button-secondary" data-action="event-history" type="button">Historial</button>
-      <button class="button button-danger" data-action="period-or-finish" type="button">
-        ${state.period === 1 ? 'Passar a 2a part' : 'Finalitzar partit'}
-      </button>
-    </footer>
+    <div class="match-control-stack">
+      <footer class="match-controls">
+        <button class="button button-undo" data-action="undo" type="button" ${events.length === 0 ? 'disabled' : ''}>Desfer</button>
+        <button class="button button-primary" data-action="event-history" type="button">Historial</button>
+        <button class="button button-period" data-action="period-or-finish" type="button">
+          ${state.period === 1 ? 'Passar a 2a part' : 'Finalitzar partit'}
+        </button>
+      </footer>
+      <button class="workflow-back-button" data-action="workflow-back" type="button" hidden>ENRERE</button>
+    </div>
   `
 
   let selectedCategory: ActionCategory | undefined
@@ -201,6 +229,7 @@ export async function createMatchScreen(
   const categoryPanel = screen.querySelector<HTMLElement>('[data-category-panel]')
   const detailPanel = screen.querySelector<HTMLElement>('[data-detail-panel]')
   const playerPanel = screen.querySelector<HTMLElement>('[data-player-panel]')
+  const timeoutPanel = screen.querySelector<HTMLElement>('[data-timeout-panel]')
   const shotDetails = screen.querySelector<HTMLElement>('[data-shot-details]')
   const nonShotDetails = screen.querySelector<HTMLElement>('[data-non-shot-details]')
   const detailTitle = screen.querySelector<HTMLElement>('[data-detail-title]')
@@ -210,6 +239,8 @@ export async function createMatchScreen(
   const playerInput = playerForm?.elements.namedItem('playerNumber') as HTMLInputElement | null
   const selectedActionLabel = screen.querySelector<HTMLElement>('[data-selected-action]')
   const eventError = screen.querySelector<HTMLElement>('[data-event-error]')
+  const timeoutError = screen.querySelector<HTMLElement>('[data-timeout-error]')
+  const workflowBackButton = screen.querySelector<HTMLButtonElement>('[data-action="workflow-back"]')
   const refresh = (): void => navigate({ screen: 'match', matchId })
 
   const showCategoryPanel = (): void => {
@@ -219,6 +250,8 @@ export async function createMatchScreen(
     if (categoryPanel) categoryPanel.hidden = false
     if (detailPanel) detailPanel.hidden = true
     if (playerPanel) playerPanel.hidden = true
+    if (timeoutPanel) timeoutPanel.hidden = true
+    if (workflowBackButton) workflowBackButton.hidden = true
   }
 
   const showDetailPanel = (category: ActionCategory): void => {
@@ -228,6 +261,8 @@ export async function createMatchScreen(
     if (categoryPanel) categoryPanel.hidden = true
     if (detailPanel) detailPanel.hidden = false
     if (playerPanel) playerPanel.hidden = true
+    if (timeoutPanel) timeoutPanel.hidden = true
+    if (workflowBackButton) workflowBackButton.hidden = false
     if (shotDetails) shotDetails.hidden = category !== 'shot'
     if (nonShotDetails) nonShotDetails.hidden = category !== 'non-shot'
     if (detailTitle) detailTitle.textContent = category === 'shot' ? 'Llançament' : 'No llançament'
@@ -237,6 +272,13 @@ export async function createMatchScreen(
   const saveAction = async (
     player: PlayerRecord | null,
     manualPlayerNumber: number | null = null,
+    teamSide: TeamSide | null =
+      player || manualPlayerNumber !== null
+        ? 'own'
+        : selectedAction?.id === 'defense-opponent-error'
+          ? 'opponent'
+          : null,
+    endsPossession: boolean | undefined = undefined,
   ): Promise<void> => {
     if (busy || !selectedAction) return
     busy = true
@@ -252,13 +294,14 @@ export async function createMatchScreen(
         actionLabel: selectedAction.label,
         actionCategory: selectedAction.category,
         shotPosition: selectedAction.category === 'shot' ? selectedShotPosition : null,
+        teamSide,
         playerId: player?.id ?? null,
         playerFirstName: player?.firstName ?? '',
         playerLastName: player?.lastName ?? '',
         playerNickname: player?.nickname ?? '',
         playerNumber: player?.number ?? manualPlayerNumber,
         playerPosition: player?.position ?? (manualPlayerNumber === null ? null : 'court'),
-        endsPossession: selectedAction.endsPossession,
+        endsPossession: endsPossession ?? selectedAction.endsPossession,
       })
       refresh()
     } catch (error) {
@@ -282,6 +325,8 @@ export async function createMatchScreen(
     if (categoryPanel) categoryPanel.hidden = true
     if (detailPanel) detailPanel.hidden = true
     if (playerPanel) playerPanel.hidden = false
+    if (timeoutPanel) timeoutPanel.hidden = true
+    if (workflowBackButton) workflowBackButton.hidden = false
     if (selectedActionLabel) {
       selectedActionLabel.textContent = createSelectedActionLabel(action, selectedShotPosition)
     }
@@ -291,19 +336,46 @@ export async function createMatchScreen(
         action.category === 'non-shot' &&
         action.playerSelection === 'all'
       rosterPicker.classList.toggle('is-separated', separateGoalkeepers)
-      rosterPicker.hidden = eligiblePlayers.length === 0
-      rosterPicker.innerHTML = separateGoalkeepers
-        ? createSeparatedRoster(eligiblePlayers)
-        : eligiblePlayers.map(createPlayerButton).join('')
+      rosterPicker.hidden = eligiblePlayers.length === 0 && action.id !== 'two-minute'
+      const opponentOption =
+        action.id === 'two-minute'
+          ? `<button class="opponent-player-button" data-two-minute-opponent type="button">
+              <strong>Equip rival</strong>
+              <span>2 minuts a un jugador rival</span>
+            </button>`
+          : ''
+      rosterPicker.innerHTML = `${opponentOption}${
+        separateGoalkeepers
+          ? createSeparatedRoster(eligiblePlayers)
+          : eligiblePlayers.map(createPlayerButton).join('')
+      }`
+      rosterPicker
+        .querySelector<HTMLButtonElement>('[data-two-minute-opponent]')
+        ?.addEventListener('click', () => {
+          const changesPossession = state.phase === 'defense'
+          if (
+            changesPossession &&
+            !window.confirm('Confirmes els 2 minuts a un jugador de l\'equip rival?')
+          ) {
+            return
+          }
+          void saveAction(null, null, 'opponent', changesPossession)
+        })
       rosterPicker.querySelectorAll<HTMLButtonElement>('[data-player-id]').forEach((button) => {
         button.addEventListener('click', () => {
           const player = eligiblePlayers.find((candidate) => candidate.id === button.dataset.playerId)
           if (!player) return
           if (action.id === 'two-minute') {
             const playerName = player.nickname || `${player.firstName} ${player.lastName}`
-            if (!window.confirm(`Confirmes 2 minuts per a ${playerName} (#${player.number})?`)) {
+            const changesPossession = state.phase === 'attack'
+            if (
+              changesPossession &&
+              !window.confirm(`Confirmes 2 minuts per a ${playerName} (#${player.number})?`)
+            ) {
               return
             }
+            void saveAction(player, null, 'own', changesPossession)
+            return
           }
           void saveAction(player)
         })
@@ -313,7 +385,8 @@ export async function createMatchScreen(
     const isLegacyMatch = match.teamId === null
     if (playerForm) playerForm.hidden = !isLegacyMatch
     if (emptyRoster) {
-      emptyRoster.hidden = eligiblePlayers.length > 0 || isLegacyMatch
+      emptyRoster.hidden =
+        eligiblePlayers.length > 0 || isLegacyMatch || action.id === 'two-minute'
       emptyRoster.textContent =
         action.playerSelection === 'goalkeepers'
           ? 'No hi ha cap porter convocat per a aquest partit.'
@@ -337,10 +410,45 @@ export async function createMatchScreen(
   })
 
   screen.querySelector('[data-action="timeout"]')?.addEventListener('click', () => {
-    if (busy || timeoutUsed) return
-    if (!window.confirm(`Confirmes el temps mort de la part ${state.period}?`)) return
-    selectedAction = timeoutAction
-    void saveAction(null)
+    if (busy || allowedTimeoutUsed) return
+    if (categoryPanel) categoryPanel.hidden = true
+    if (detailPanel) detailPanel.hidden = true
+    if (playerPanel) playerPanel.hidden = true
+    if (timeoutPanel) timeoutPanel.hidden = false
+    if (workflowBackButton) workflowBackButton.hidden = false
+    if (timeoutError) timeoutError.hidden = true
+  })
+
+  screen.querySelectorAll<HTMLButtonElement>('[data-timeout-side]').forEach((button) => {
+    button.addEventListener('click', () => {
+      if (busy) return
+      const side = button.dataset.timeoutSide as TeamSide | undefined
+      if (!side) return
+      if (side !== allowedTimeoutSide) {
+        if (timeoutError) {
+          timeoutError.textContent =
+            side === 'own'
+              ? 'No es pot marcar un temps mort del CHSA mentre estem en defensa.'
+              : "No es pot marcar un temps mort de l'equip rival mentre estem en atac."
+          timeoutError.hidden = false
+        }
+        return
+      }
+      if (timeoutUsedBy(side)) {
+        if (timeoutError) {
+          timeoutError.textContent =
+            side === 'own'
+              ? 'El CHSA ja ha utilitzat el temps mort d’aquesta part.'
+              : "L'equip rival ja ha utilitzat el temps mort d’aquesta part."
+          timeoutError.hidden = false
+        }
+        return
+      }
+      const sideLabel = side === 'own' ? 'CHSA' : 'Equip rival'
+      if (!window.confirm(`Confirmes el temps mort de ${sideLabel}?`)) return
+      selectedAction = { ...timeoutAction, label: `Temps mort ${sideLabel}` }
+      void saveAction(null, null, side, false)
+    })
   })
 
   screen.querySelector('[data-action="two-minute"]')?.addEventListener('click', () => {
@@ -369,18 +477,26 @@ export async function createMatchScreen(
     })
   })
 
-  screen
-    .querySelector('[data-action="back-category"]')
-    ?.addEventListener('click', showCategoryPanel)
-
-  screen.querySelector('[data-action="cancel-player"]')?.addEventListener('click', () => {
-    const returnToCategory =
-      selectedAction?.category === 'special' || selectedAction?.id === 'two-minute'
-    selectedAction = undefined
-    playerForm?.reset()
-    if (playerPanel) playerPanel.hidden = true
-    if (returnToCategory) showCategoryPanel()
-    else if (detailPanel) detailPanel.hidden = false
+  workflowBackButton?.addEventListener('click', () => {
+    if (busy) return
+    if (timeoutPanel && !timeoutPanel.hidden) {
+      showCategoryPanel()
+      return
+    }
+    if (playerPanel && !playerPanel.hidden) {
+      const returnToCategory =
+        selectedAction?.category === 'special' || selectedAction?.id === 'two-minute'
+      selectedAction = undefined
+      playerForm?.reset()
+      playerPanel.hidden = true
+      if (returnToCategory) showCategoryPanel()
+      else {
+        if (detailPanel) detailPanel.hidden = false
+        workflowBackButton.hidden = false
+      }
+      return
+    }
+    showCategoryPanel()
   })
 
   playerForm?.addEventListener('submit', async (event) => {
@@ -431,7 +547,14 @@ export async function createMatchScreen(
 }
 
 function createActionButton(action: MatchActionDefinition): string {
-  return `<button class="action-button" data-action-id="${escapeHtml(action.id)}" type="button">${escapeHtml(action.label)}</button>`
+  const resultClass = action.id.endsWith('-out')
+    ? 'is-result-out'
+    : action.id.endsWith('-save')
+      ? 'is-result-save'
+      : action.id.endsWith('-goal')
+        ? 'is-result-goal'
+        : ''
+  return `<button class="action-button ${resultClass}" data-action-id="${escapeHtml(action.id)}" type="button">${escapeHtml(action.label)}</button>`
 }
 
 function updateShotPositionButtons(
@@ -455,9 +578,7 @@ function createSelectedActionLabel(
 function sortPlayers(players: readonly PlayerRecord[]): PlayerRecord[] {
   return [...players].sort((a, b) => {
     if (a.position !== b.position) return a.position === 'goalkeeper' ? 1 : -1
-    const aName = a.nickname || `${a.firstName} ${a.lastName}`
-    const bName = b.nickname || `${b.firstName} ${b.lastName}`
-    return aName.localeCompare(bName, 'ca', { sensitivity: 'base' })
+    return a.number - b.number
   })
 }
 

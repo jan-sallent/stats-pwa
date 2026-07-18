@@ -31,7 +31,7 @@ export async function createMatchEventsScreen(
       ${
         events.length === 0
           ? `<div class="empty-state"><h2>Encara no hi ha accions</h2></div>`
-          : events.map(createEventCard).join('')
+          : [...events].reverse().map(createEventCard).join('')
       }
     </section>
   `
@@ -60,7 +60,9 @@ function createEventCard(event: MatchEventRecord): string {
 
   const playerName = event.payload.playerNickname || event.payload.playerFirstName
   const player =
-    event.payload.playerNumber === null
+    event.payload.teamSide === 'opponent'
+      ? 'Equip rival'
+      : event.payload.playerNumber === null
       ? 'Sense jugador'
       : `${escapeHtml(playerName || event.payload.playerLastName || 'Jugador')} (#${event.payload.playerNumber})`
   const position = event.payload.shotPosition ? ` &middot; ${event.payload.shotPosition}` : ''

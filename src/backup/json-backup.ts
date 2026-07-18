@@ -13,7 +13,7 @@ import type {
 } from '../models/types'
 
 const backupFormat = 'handbol-stats-backup'
-const backupVersion = 3
+const backupVersion = 4
 const maximumBackupSize = 25 * 1024 * 1024
 
 interface AppBackup {
@@ -83,7 +83,10 @@ function normalizeBackup(value: unknown): AppBackup | null {
   if (!isRecord(value)) return null
   if (
     value.format !== backupFormat ||
-    (value.version !== 1 && value.version !== 2 && value.version !== backupVersion)
+    (value.version !== 1 &&
+      value.version !== 2 &&
+      value.version !== 3 &&
+      value.version !== backupVersion)
   ) {
     return null
   }
@@ -298,6 +301,15 @@ function normalizeActionEventPayload(value: Record<string, unknown>): ActionEven
   if (shotPosition !== null && shotPosition !== '6m' && shotPosition !== '7m' && shotPosition !== '9m') {
     return null
   }
+  const teamSide =
+    value.teamSide === undefined
+      ? value.actionId === 'defense-opponent-error'
+        ? 'opponent'
+        : typeof value.playerId === 'string'
+          ? 'own'
+          : null
+      : value.teamSide
+  if (teamSide !== null && teamSide !== 'own' && teamSide !== 'opponent') return null
 
   const playerFirstName = value.playerFirstName ?? ''
   const playerLastName = value.playerLastName ?? ''
@@ -319,6 +331,7 @@ function normalizeActionEventPayload(value: Record<string, unknown>): ActionEven
     actionLabel: value.actionLabel,
     actionCategory,
     shotPosition,
+    teamSide,
     playerId: typeof value.playerId === 'string' ? value.playerId : null,
     playerFirstName,
     playerLastName,

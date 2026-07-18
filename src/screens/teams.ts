@@ -48,12 +48,13 @@ export async function createTeamsScreen(navigate: Navigate): Promise<HTMLElement
           : teams
               .map((team) => {
                 const players = playerLists.get(team.id) ?? []
+                const courtPlayers = players.filter((player) => player.position === 'court').length
                 const goalkeepers = players.filter((player) => player.position === 'goalkeeper').length
                 return `
                   <article class="team-card">
                     <div>
                       <h2>${escapeHtml(team.name)}</h2>
-                      <p>${players.length} jugadors &middot; ${goalkeepers} porters</p>
+                      <p>${courtPlayers} jugadors de camp &middot; ${goalkeepers} porters</p>
                     </div>
                     <div class="team-card-actions">
                       <button class="button button-secondary" data-edit-team-id="${team.id}" type="button">

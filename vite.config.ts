@@ -10,6 +10,7 @@ export default defineConfig({
       registerType: 'prompt',
       includeAssets: ['favicon.ico', 'logo.svg', 'apple-touch-icon-180x180.png'],
       manifest: {
+        id: '.',
         name: "RAiP - Recol·lecció d'Accions i Possessions",
         short_name: 'RAiP',
         description: "Aplicaci\u00f3 local per registrar i exportar dades de partits d'handbol",

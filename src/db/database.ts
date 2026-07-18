@@ -90,6 +90,28 @@ class HandbolDatabase extends Dexie {
             event.payload.shotPosition ??= null
           })
       })
+
+    this.version(5)
+      .stores({
+        matches: 'id, teamId, status, scheduledAt, updatedAt',
+        events: 'id, matchId, [matchId+sequence], createdAt',
+        teams: 'id, name, updatedAt',
+        players: 'id, teamId, &[teamId+number], position, updatedAt',
+      })
+      .upgrade((transaction) =>
+        transaction
+          .table<MatchEventRecord>('events')
+          .toCollection()
+          .modify((event) => {
+            if (event.payload.kind !== 'action') return
+            event.payload.teamSide ??=
+              event.payload.actionId === 'defense-opponent-error'
+                ? 'opponent'
+                : event.payload.playerId
+                  ? 'own'
+                  : null
+          }),
+      )
   }
 }
 

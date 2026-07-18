@@ -89,6 +89,14 @@ export async function createEventEditorScreen(
         </select>
       </label>
 
+      <label class="field" data-team-side-field hidden>
+        <span>Equip</span>
+        <select name="teamSide">
+          <option value="opponent" ${payload.teamSide === 'opponent' ? 'selected' : ''}>Equip rival</option>
+          <option value="own" ${payload.teamSide !== 'opponent' ? 'selected' : ''}>CHSA</option>
+        </select>
+      </label>
+
       <label class="field" data-player-field>
         <span>Jugador</span>
         <select name="playerId">
@@ -105,19 +113,28 @@ export async function createEventEditorScreen(
   const actionSelect = form?.elements.namedItem('actionId') as HTMLSelectElement | null
   const positionSelect = form?.elements.namedItem('shotPosition') as HTMLSelectElement | null
   const playerSelect = form?.elements.namedItem('playerId') as HTMLSelectElement | null
+  const teamSideSelect = form?.elements.namedItem('teamSide') as HTMLSelectElement | null
   const positionField = screen.querySelector<HTMLElement>('[data-shot-position-field]')
+  const teamSideField = screen.querySelector<HTMLElement>('[data-team-side-field]')
   const playerField = screen.querySelector<HTMLElement>('[data-player-field]')
   const errorMessage = screen.querySelector<HTMLElement>('[data-editor-error]')
 
   const updateFields = (): void => {
     const definition = definitions.find((candidate) => candidate.id === actionSelect?.value)
     if (!definition) return
+    const hasTeamSide = definition.id === 'two-minute' || definition.id === 'timeout'
+    const selectedSide = teamSideSelect?.value
+    const needsPlayer =
+      definition.playerSelection !== 'none' &&
+      !(definition.id === 'two-minute' && selectedSide === 'opponent')
     if (positionField) positionField.hidden = definition.category !== 'shot'
     if (positionSelect) positionSelect.disabled = definition.category !== 'shot'
-    if (playerField) playerField.hidden = definition.playerSelection === 'none'
+    if (teamSideField) teamSideField.hidden = !hasTeamSide
+    if (teamSideSelect) teamSideSelect.disabled = !hasTeamSide
+    if (playerField) playerField.hidden = !needsPlayer
     if (playerSelect) {
-      playerSelect.disabled = definition.playerSelection === 'none'
-      playerSelect.required = definition.playerSelection !== 'none'
+      playerSelect.disabled = !needsPlayer
+      playerSelect.required = needsPlayer
       const playerOptions = [...playerSelect.options]
       playerOptions.forEach((option) => {
         option.disabled =
@@ -133,6 +150,7 @@ export async function createEventEditorScreen(
   }
 
   actionSelect?.addEventListener('change', updateFields)
+  teamSideSelect?.addEventListener('change', updateFields)
   updateFields()
 
   screen.querySelector('[data-action="back"]')?.addEventListener('click', () => {
@@ -141,17 +159,44 @@ export async function createEventEditorScreen(
 
   form?.addEventListener('submit', async (submitEvent) => {
     submitEvent.preventDefault()
-    if (!actionSelect || !positionSelect || !playerSelect) return
+    if (!actionSelect || !positionSelect || !playerSelect || !teamSideSelect) return
     if (errorMessage) errorMessage.hidden = true
     const definition = definitions.find((candidate) => candidate.id === actionSelect.value)
     if (!definition) return
+    const hasTeamSide = definition.id === 'two-minute' || definition.id === 'timeout'
+    const teamSide = hasTeamSide
+      ? teamSideSelect.value === 'opponent'
+        ? 'opponent' as const
+        : 'own' as const
+      : definition.id === 'defense-opponent-error'
+        ? 'opponent' as const
+        : definition.playerSelection === 'none'
+          ? null
+          : 'own' as const
+    const needsPlayer =
+      definition.playerSelection !== 'none' &&
+      !(definition.id === 'two-minute' && teamSide === 'opponent')
     const player =
-      definition.playerSelection === 'none'
+      !needsPlayer
         ? undefined
         : players.find((candidate) => candidate.id === playerSelect.value)
-    if (definition.playerSelection !== 'none' && !player) {
+    if (needsPlayer && !player) {
       if (errorMessage) {
         errorMessage.textContent = 'No hi ha cap jugador v\u00e0lid per a aquesta acci\u00f3.'
+        errorMessage.hidden = false
+      }
+      return
+    }
+    if (
+      definition.id === 'timeout' &&
+      ((payload.phase === 'attack' && teamSide !== 'own') ||
+        (payload.phase === 'defense' && teamSide !== 'opponent'))
+    ) {
+      if (errorMessage) {
+        errorMessage.textContent =
+          payload.phase === 'attack'
+            ? "En atac nom\u00e9s es pot registrar un temps mort del CHSA."
+            : "En defensa nom\u00e9s es pot registrar un temps mort de l'equip rival."
         errorMessage.hidden = false
       }
       return
@@ -163,7 +208,8 @@ export async function createEventEditorScreen(
           candidate.id !== eventId &&
           candidate.payload.kind === 'action' &&
           candidate.payload.actionId === 'timeout' &&
-          candidate.payload.period === payload.period,
+          candidate.payload.period === payload.period &&
+          candidate.payload.teamSide === teamSide,
       )
     ) {
       if (errorMessage) {
@@ -176,22 +222,32 @@ export async function createEventEditorScreen(
     const submitButton = form.querySelector<HTMLButtonElement>('button[type="submit"]')
     if (submitButton) submitButton.disabled = true
     try {
+      const actionLabel =
+        definition.id === 'timeout'
+          ? `Temps mort ${teamSide === 'own' ? 'CHSA' : 'Equip rival'}`
+          : definition.label
+      const endsPossession =
+        definition.id === 'two-minute'
+          ? (teamSide === 'own' && payload.phase === 'attack') ||
+            (teamSide === 'opponent' && payload.phase === 'defense')
+          : definition.endsPossession
       await updateActionEvent(matchId, eventId, {
         ...payload,
         actionId: definition.id,
-        actionLabel: definition.label,
+        actionLabel,
         actionCategory: definition.category,
         shotPosition:
           definition.category === 'shot'
             ? (positionSelect.value as ShotPosition) || null
             : null,
+        teamSide,
         playerId: player?.id ?? null,
         playerFirstName: player?.firstName ?? '',
         playerLastName: player?.lastName ?? '',
         playerNickname: player?.nickname ?? '',
         playerNumber: player?.number ?? null,
         playerPosition: player?.position ?? null,
-        endsPossession: definition.endsPossession,
+        endsPossession,
       })
       navigate({ screen: 'match-events', matchId })
     } catch (error) {
@@ -256,8 +312,6 @@ function createPlayerOption(player: PlayerRecord, selectedId: string | null): st
 function sortPlayers(players: readonly PlayerRecord[]): PlayerRecord[] {
   return [...players].sort((a, b) => {
     if (a.position !== b.position) return a.position === 'goalkeeper' ? 1 : -1
-    const aName = a.nickname || `${a.firstName} ${a.lastName}`
-    const bName = b.nickname || `${b.firstName} ${b.lastName}`
-    return aName.localeCompare(bName, 'ca', { sensitivity: 'base' })
+    return a.number - b.number
   })
 }

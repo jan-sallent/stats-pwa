@@ -26,6 +26,7 @@ export function startApp(root: HTMLElement): void {
 
       if (request === renderRequest) {
         root.replaceChildren(screen)
+        window.scrollTo(0, 0)
       }
     } catch (error) {
       console.error("No s'ha pogut renderitzar l'aplicaci\u00f3", error)

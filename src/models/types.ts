@@ -6,6 +6,7 @@ export type MatchPeriod = 1 | 2
 export type PlayerPosition = 'court' | 'goalkeeper'
 export type ActionCategory = 'shot' | 'non-shot' | 'special'
 export type ShotPosition = '6m' | '7m' | '9m'
+export type TeamSide = 'own' | 'opponent'
 
 export interface TeamRecord {
   id: EntityId
@@ -49,6 +50,7 @@ export interface ActionEventPayload {
   actionLabel: string
   actionCategory: ActionCategory | null
   shotPosition: ShotPosition | null
+  teamSide: TeamSide | null
   playerId: EntityId | null
   playerFirstName: string
   playerLastName: string
