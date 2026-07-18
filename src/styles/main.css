@@ -608,8 +608,9 @@ svg {
 }
 
 .special-action-button.is-timeout {
-  color: #684900;
-  background: #fff0b8;
+  border-color: #c9c5c1;
+  color: #3f3b38;
+  background: #ffffff;
 }
 
 .special-action-button.is-two-minute {
@@ -649,20 +650,21 @@ svg {
 
 .timeout-team-button {
   min-height: 5rem;
-  border: 2px solid #171717;
+  border: 1px solid #c9c5c1;
   border-radius: 1rem;
   padding: 0.8rem;
-  color: #ffffff;
+  color: #302d2a;
+  background: #f7f6f5;
   font-weight: 850;
   cursor: pointer;
 }
 
 .timeout-team-button.is-own {
-  background: #ed6a00;
+  background: #ffffff;
 }
 
 .timeout-team-button.is-opponent {
-  background: #171717;
+  background: #f3f2f1;
 }
 
 .special-action-button:disabled {
@@ -809,33 +811,33 @@ svg {
 }
 
 .button-undo {
-  border: 1px solid #e0aaa5;
-  color: #7d2d27;
-  background: #f6d6d3;
+  border: 1px solid #b51f16;
+  color: #ffffff;
+  background: #dc2f24;
 }
 
 .button-period {
-  border: 1px solid #a9bfdc;
-  color: #31567f;
-  background: #dce8f7;
+  border: 1px solid #c9c5c1;
+  color: #3f3b38;
+  background: #ffffff;
 }
 
 .match-controls [data-action="event-history"] {
-  border: 1px solid #e2bd94;
-  color: #7f480f;
-  background: #ffe5c9;
+  border: 1px solid #c9c5c1;
+  color: #3f3b38;
+  background: #ffffff;
   box-shadow: none;
 }
 
 .workflow-back-button {
   width: 100%;
   min-height: 5.5rem;
-  border: 2px solid #d7c276;
+  border: 3px solid #c8a400;
   border-radius: 1rem;
   padding: 1rem;
-  color: #655718;
-  background: #fff2bd;
-  box-shadow: 0 6px 16px rgb(78 65 20 / 12%);
+  color: #241f00;
+  background: #ffd800;
+  box-shadow: 0 8px 18px rgb(130 105 0 / 20%);
   font-size: 1.35rem;
   font-weight: 950;
   letter-spacing: 0.08em;

@@ -34,7 +34,6 @@ interface MatchCsvRow {
   jugador_sobrenom: string
   dorsal: CsvValue
   posicio: string
-  finalitza_possessio: CsvValue
   data_registre: string
 }
 
@@ -63,7 +62,6 @@ const columns: readonly CsvColumn<MatchCsvRow>[] = [
   { header: 'jugador_sobrenom', value: (row) => row.jugador_sobrenom },
   { header: 'dorsal', value: (row) => row.dorsal },
   { header: 'posicio', value: (row) => row.posicio },
-  { header: 'finalitza_possessio', value: (row) => row.finalitza_possessio },
   { header: 'data_registre', value: (row) => row.data_registre },
 ]
 
@@ -79,7 +77,7 @@ export async function downloadMatchCsv(matchId: string): Promise<void> {
     match.teamId ? getTeam(match.teamId) : Promise.resolve(undefined),
   ])
   const rows = createMatchRows(match, events, team?.name ?? '')
-  downloadCsv(createMatchFilename(match), serializeCsv(rows, columns))
+  downloadCsv(createMatchFilename(match, team?.name ?? ''), serializeCsv(rows, columns))
 }
 
 export async function downloadAllMatchesCsv(): Promise<void> {
@@ -126,7 +124,7 @@ function createEventRow(
       tipus_registre: 'canvi_part',
       part: 2,
       possessio: '',
-      fase: translatePhase(event.payload.startingPhase),
+      fase: '',
       categoria_accio: '',
       accio_id: '',
       accio: 'Inici 2a part',
@@ -137,7 +135,6 @@ function createEventRow(
       jugador_sobrenom: '',
       dorsal: '',
       posicio: '',
-      finalitza_possessio: '',
       data_registre: event.createdAt,
     }
   }
@@ -160,7 +157,6 @@ function createEventRow(
     jugador_sobrenom: protectSpreadsheetText(event.payload.playerNickname),
     dorsal: event.payload.playerNumber,
     posicio: translatePlayerPosition(event.payload.playerPosition),
-    finalitza_possessio: event.payload.endsPossession,
     data_registre: event.createdAt,
   }
 }
@@ -184,7 +180,6 @@ function createEmptyMatchRow(match: MatchRecord, teamName: string): MatchCsvRow 
     jugador_sobrenom: '',
     dorsal: '',
     posicio: '',
-    finalitza_possessio: '',
     data_registre: match.createdAt,
   }
 }
@@ -240,10 +235,27 @@ function translatePlayerPosition(position: 'court' | 'goalkeeper' | null): strin
   return position === 'goalkeeper' ? 'porter' : 'jugador_camp'
 }
 
-function createMatchFilename(match: MatchRecord): string {
+function createMatchFilename(match: MatchRecord, teamName: string): string {
+  const team = createFilenamePart(teamName || 'equip')
   const opponent = createFilenamePart(match.opponent || 'sense-rival')
-  const date = match.scheduledAt.slice(0, 10) || getDateStamp()
-  return `handbol_${opponent}_${date}.csv`
+  const dateAndTime = createFilenameDateTime(match.scheduledAt)
+  return `${team}_${opponent}_${dateAndTime}.csv`
+}
+
+function createFilenameDateTime(value: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(value)
+  if (match) {
+    const [, year, month, day, hour, minute] = match
+    return `${day}-${month}-${year}_${hour}-${minute}`
+  }
+
+  const now = new Date()
+  const day = String(now.getDate()).padStart(2, '0')
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const year = now.getFullYear()
+  const hour = String(now.getHours()).padStart(2, '0')
+  const minute = String(now.getMinutes()).padStart(2, '0')
+  return `${day}-${month}-${year}_${hour}-${minute}`
 }
 
 function createFilenamePart(value: string): string {
